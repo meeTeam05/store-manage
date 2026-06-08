@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maison Aureline | Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-body">
+  <header class="site-header">
+    <a class="brand" href="index.html">Maison Aureline</a>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="login.html">Sign In</a>
+    </nav>
+  </header>
+
+  <main class="login-shell">
+    <section class="login-panel">
+      <p class="eyebrow">Client Access</p>
+      <h1>Sign In</h1>
+      <form id="login-form" class="login-form">
+        <label>
+          <span>Username</span>
+          <input type="text" name="username" autocomplete="username" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <button class="button primary" type="submit">Continue</button>
+      </form>
+      <p id="status" class="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="login.js"></script>
+</body>
+</html>
