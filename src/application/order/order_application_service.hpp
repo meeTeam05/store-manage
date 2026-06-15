@@ -133,6 +133,7 @@ public:
         }
 
         std::vector<OrderItem> order_items;
+        std::vector<fashion_store::domain::inventory::InventoryItem> staged_inventory_items;
         for (const auto& item : cart->items()) {
             auto variant_view = product_repository_.find_variant(item.variant_id);
             if (!variant_view.has_value()) {
@@ -148,7 +149,7 @@ public:
             if (!reserve_result) {
                 return Result<PlaceOrderReceipt, PlaceOrderError>::fail(PlaceOrderError::InsufficientStock);
             }
-            inventory_repository_.save(*inventory_item);
+            staged_inventory_items.push_back(*inventory_item);
 
             order_items.push_back(OrderItem{
                 OrderItemId{command.order_id.value + "-" + item.variant_id.value},
@@ -172,6 +173,7 @@ public:
 
         const auto subtotal = order.subtotal();
         auto discount = Money::from_minor(0);
+        std::optional<fashion_store::domain::pricing::Voucher> staged_voucher;
 
         if (command.voucher_code.has_value()) {
             auto voucher = voucher_repository_.find_by_code(*command.voucher_code);
@@ -183,6 +185,11 @@ public:
                 return Result<PlaceOrderReceipt, PlaceOrderError>::fail(PlaceOrderError::VoucherInvalid);
             }
             discount = voucher->calculate_discount(subtotal);
+            auto consume_result = voucher->consume();
+            if (!consume_result) {
+                return Result<PlaceOrderReceipt, PlaceOrderError>::fail(PlaceOrderError::VoucherInvalid);
+            }
+            staged_voucher = *voucher;
         }
 
         auto discount_result = order.apply_discount(discount, command.voucher_code);
@@ -195,9 +202,13 @@ public:
             return Result<PlaceOrderReceipt, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
         }
 
+        auto cleared_cart = *cart;
+        cleared_cart.clear();
+
+        persist_inventory_items(staged_inventory_items);
+        persist_voucher(staged_voucher);
         order_repository_.save(order);
-        cart->clear();
-        cart_repository_.save(*cart);
+        cart_repository_.save(cleared_cart);
 
         return Result<PlaceOrderReceipt, PlaceOrderError>::ok(
             PlaceOrderReceipt{order, subtotal, discount, order.total()});
@@ -209,11 +220,7 @@ public:
             return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
         }
 
-        auto paid_result = order->mark_paid();
-        if (!paid_result) {
-            return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
-        }
-
+        std::vector<fashion_store::domain::inventory::InventoryItem> staged_inventory_items;
         for (const auto& item : order->items()) {
             auto inventory_item = inventory_repository_.find_by_variant_id(item.variant_id);
             if (!inventory_item.has_value()) {
@@ -224,11 +231,18 @@ public:
             if (!commit_result) {
                 return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
             }
-            inventory_repository_.save(*inventory_item);
+            staged_inventory_items.push_back(*inventory_item);
         }
 
-        order_repository_.save(*order);
-        return Result<Order, PlaceOrderError>::ok(*order);
+        auto paid_order = *order;
+        auto paid_result = paid_order.mark_paid();
+        if (!paid_result) {
+            return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
+        }
+
+        persist_inventory_items(staged_inventory_items);
+        order_repository_.save(paid_order);
+        return Result<Order, PlaceOrderError>::ok(paid_order);
     }
 
     Result<Order, PlaceOrderError> advance_order_status(const OrderId& order_id, OrderStatus target_status) {
@@ -268,11 +282,8 @@ public:
         }
 
         const auto status_before_cancel = order->status();
-        auto cancel_result = order->cancel();
-        if (!cancel_result) {
-            return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
-        }
-
+        std::vector<fashion_store::domain::inventory::InventoryItem> staged_inventory_items;
+        std::optional<fashion_store::domain::pricing::Voucher> restored_voucher;
         if (status_before_cancel == OrderStatus::AwaitingPayment) {
             for (const auto& item : order->items()) {
                 auto inventory_item = inventory_repository_.find_by_variant_id(item.variant_id);
@@ -283,7 +294,7 @@ public:
                 if (!release_result) {
                     return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
                 }
-                inventory_repository_.save(*inventory_item);
+                staged_inventory_items.push_back(*inventory_item);
             }
         }
 
@@ -297,12 +308,31 @@ public:
                 if (!restock_result) {
                     return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
                 }
-                inventory_repository_.save(*inventory_item);
+                staged_inventory_items.push_back(*inventory_item);
             }
         }
 
-        order_repository_.save(*order);
-        return Result<Order, PlaceOrderError>::ok(*order);
+        if ((status_before_cancel == OrderStatus::AwaitingPayment ||
+             status_before_cancel == OrderStatus::Paid) &&
+            order->voucher_code().has_value()) {
+            auto voucher = voucher_repository_.find_by_code(*order->voucher_code());
+            if (!voucher.has_value()) {
+                return Result<Order, PlaceOrderError>::fail(PlaceOrderError::VoucherNotFound);
+            }
+            voucher->restore_use();
+            restored_voucher = *voucher;
+        }
+
+        auto cancelled_order = *order;
+        auto cancel_result = cancelled_order.cancel();
+        if (!cancel_result) {
+            return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
+        }
+
+        persist_inventory_items(staged_inventory_items);
+        persist_voucher(restored_voucher);
+        order_repository_.save(cancelled_order);
+        return Result<Order, PlaceOrderError>::ok(cancelled_order);
     }
 
     Result<Order, PlaceOrderError> get_order(const OrderId& order_id) const {
@@ -318,6 +348,19 @@ public:
     }
 
 private:
+    void persist_inventory_items(
+        const std::vector<fashion_store::domain::inventory::InventoryItem>& items) {
+        for (const auto& item : items) {
+            inventory_repository_.save(item);
+        }
+    }
+
+    void persist_voucher(const std::optional<fashion_store::domain::pricing::Voucher>& voucher) {
+        if (voucher.has_value()) {
+            voucher_repository_.save(*voucher);
+        }
+    }
+
     ICartRepository& cart_repository_;
     IOrderRepository& order_repository_;
     IProductRepository& product_repository_;
