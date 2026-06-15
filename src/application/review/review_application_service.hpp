@@ -24,6 +24,7 @@ using fashion_store::domain::shared::VariantId;
 
 enum class CreateReviewError {
     OrderNotFound,
+    DuplicateReview,
     ReviewNotEligible
 };
 
@@ -42,6 +43,14 @@ public:
         auto order = order_repository_.find_by_id(order_id);
         if (!order.has_value()) {
             return Result<Review, CreateReviewError>::fail(CreateReviewError::OrderNotFound);
+        }
+
+        const auto existing_reviews = review_repository_.find_by_customer_id(customer_id);
+        for (const auto& existing_review : existing_reviews) {
+            if (existing_review.product_id() == product_id &&
+                existing_review.variant_id() == variant_id) {
+                return Result<Review, CreateReviewError>::fail(CreateReviewError::DuplicateReview);
+            }
         }
 
         auto review = ReviewPolicy::create_review_for_order(

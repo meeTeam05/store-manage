@@ -21,6 +21,7 @@ using fashion_store::domain::shared::ReturnId;
 
 enum class CreateReturnError {
     OrderNotFound,
+    QuantityExceededByExistingRequests,
     ReturnNotEligible
 };
 
@@ -37,6 +38,27 @@ public:
         auto order = order_repository_.find_by_id(order_id);
         if (!order.has_value()) {
             return Result<ReturnRequest, CreateReturnError>::fail(CreateReturnError::OrderNotFound);
+        }
+
+        int purchased_quantity = 0;
+        for (const auto& item : order->items()) {
+            if (item.id == order_item_id) {
+                purchased_quantity = item.quantity;
+                break;
+            }
+        }
+
+        int existing_requested_quantity = 0;
+        for (const auto& existing_request : return_repository_.find_by_order_id(order_id)) {
+            if (existing_request.order_item_id() == order_item_id) {
+                existing_requested_quantity += existing_request.quantity();
+            }
+        }
+
+        if (purchased_quantity > 0 &&
+            existing_requested_quantity + quantity > purchased_quantity) {
+            return Result<ReturnRequest, CreateReturnError>::fail(
+                CreateReturnError::QuantityExceededByExistingRequests);
         }
 
         auto request = ReturnPolicy::create_request_for_order_item(
