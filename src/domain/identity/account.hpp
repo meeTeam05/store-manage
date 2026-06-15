@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "domain/shared/types.hpp"
@@ -23,15 +24,20 @@ enum class AccountStatus {
 
 class Account {
 public:
-    Account(AccountId id, std::string username, std::string password_hash, Role role, AccountStatus status)
-        : id_(std::move(id)),
-          username_(std::move(username)),
-          password_hash_(std::move(password_hash)),
-          role_(role),
-          status_(status) {
-        require(!id_.value.empty(), "account id must not be empty");
-        require(!username_.empty(), "username must not be empty");
-    }
+    Account(AccountId id, std::string username, std::string password_hash, Role role, AccountStatus status);
+
+    const AccountId& id() const noexcept { return id_; }
+    const std::string& username() const noexcept { return username_; }
+    Role role() const noexcept { return role_; }
+    AccountStatus status() const noexcept { return status_; }
+
+    bool can_sign_in() const noexcept;
+
+    bool password_matches(const std::string& password_hash) const noexcept;
+
+    void lock() noexcept;
+
+    void activate() noexcept;
 
 private:
     AccountId id_;
@@ -44,6 +50,10 @@ private:
 class IAccountRepository {
 public:
     virtual ~IAccountRepository() = default;
+
+    virtual std::optional<Account> find_by_id(const AccountId& account_id) const = 0;
+    virtual std::optional<Account> find_by_username(const std::string& username) const = 0;
+    virtual void save(const Account& account) = 0;
 };
 
 }  // namespace fashion_store::domain::identity
