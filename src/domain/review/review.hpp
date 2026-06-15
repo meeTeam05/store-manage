@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "domain/shared/types.hpp"
 
@@ -43,6 +44,14 @@ public:
                    verified_purchase));
     }
 
+    const ReviewId& id() const noexcept { return review_id_; }
+    const CustomerId& customer_id() const noexcept { return customer_id_; }
+    const ProductId& product_id() const noexcept { return product_id_; }
+    const std::optional<VariantId>& variant_id() const noexcept { return variant_id_; }
+    int rating() const noexcept { return rating_; }
+    const std::string& comment() const noexcept { return comment_; }
+    bool verified_purchase() const noexcept { return verified_purchase_; }
+
 private:
     Review(ReviewId review_id,
            CustomerId customer_id,
@@ -72,6 +81,8 @@ class IReviewRepository {
 public:
     virtual ~IReviewRepository() = default;
 
+    virtual std::vector<Review> find_by_product_id(const ProductId& product_id) const = 0;
+    virtual std::vector<Review> find_by_customer_id(const CustomerId& customer_id) const = 0;
     virtual void save(const Review& review) = 0;
 };
 
