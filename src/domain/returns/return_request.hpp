@@ -1,6 +1,8 @@
 #pragma once
 
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "domain/shared/types.hpp"
@@ -11,6 +13,8 @@ using fashion_store::domain::shared::OrderId;
 using fashion_store::domain::shared::OrderItemId;
 using fashion_store::domain::shared::Result;
 using fashion_store::domain::shared::ReturnId;
+using fashion_store::domain::shared::Status;
+using fashion_store::domain::shared::ok_status;
 
 enum class ReturnStatus {
     Requested,
@@ -22,7 +26,8 @@ enum class ReturnStatus {
 };
 
 enum class ReturnError {
-    InvalidQuantity
+    InvalidQuantity,
+    InvalidStateTransition
 };
 
 class ReturnRequest {
@@ -50,6 +55,63 @@ public:
     const std::string& reason() const noexcept { return reason_; }
     ReturnStatus status() const noexcept { return status_; }
 
+    Status<ReturnError> approve() {
+        if (status_ != ReturnStatus::Requested) {
+            return Status<ReturnError>::fail(ReturnError::InvalidStateTransition);
+        }
+        status_ = ReturnStatus::Approved;
+        return ok_status<ReturnError>();
+    }
+
+    Status<ReturnError> reject() {
+        if (status_ != ReturnStatus::Requested) {
+            return Status<ReturnError>::fail(ReturnError::InvalidStateTransition);
+        }
+        status_ = ReturnStatus::Rejected;
+        return ok_status<ReturnError>();
+    }
+
+    Status<ReturnError> mark_restocked() {
+        if (status_ != ReturnStatus::Approved) {
+            return Status<ReturnError>::fail(ReturnError::InvalidStateTransition);
+        }
+        status_ = ReturnStatus::Restocked;
+        return ok_status<ReturnError>();
+    }
+
+    Status<ReturnError> mark_refunded() {
+        if (status_ != ReturnStatus::Restocked) {
+            return Status<ReturnError>::fail(ReturnError::InvalidStateTransition);
+        }
+        status_ = ReturnStatus::Refunded;
+        return ok_status<ReturnError>();
+    }
+
+    Status<ReturnError> close() {
+        if (status_ != ReturnStatus::Rejected &&
+            status_ != ReturnStatus::Refunded) {
+            return Status<ReturnError>::fail(ReturnError::InvalidStateTransition);
+        }
+        status_ = ReturnStatus::Closed;
+        return ok_status<ReturnError>();
+    }
+
+    static ReturnRequest rehydrate(ReturnId return_id,
+                                   OrderId order_id,
+                                   OrderItemId order_item_id,
+                                   int quantity,
+                                   std::string reason,
+                                   ReturnStatus status) {
+        auto request = ReturnRequest(
+            std::move(return_id),
+            std::move(order_id),
+            std::move(order_item_id),
+            quantity,
+            std::move(reason));
+        request.status_ = status;
+        return request;
+    }
+
 private:
     ReturnRequest(ReturnId return_id, OrderId order_id, OrderItemId order_item_id, int quantity, std::string reason)
         : return_id_(std::move(return_id)),
@@ -70,6 +132,7 @@ class IReturnRepository {
 public:
     virtual ~IReturnRepository() = default;
 
+    virtual std::optional<ReturnRequest> find_by_id(const ReturnId& return_id) const = 0;
     virtual std::vector<ReturnRequest> find_by_order_id(const OrderId& order_id) const = 0;
     virtual void save(const ReturnRequest& request) = 0;
 };

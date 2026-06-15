@@ -28,6 +28,7 @@ public:
 
     const AccountId& id() const noexcept { return id_; }
     const std::string& username() const noexcept { return username_; }
+    const std::string& password_hash() const noexcept { return password_hash_; }
     Role role() const noexcept { return role_; }
     AccountStatus status() const noexcept { return status_; }
 

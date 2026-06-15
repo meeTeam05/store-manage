@@ -17,10 +17,38 @@ cmake -S . -B build
 cmake --build build
 ```
 
+## Build With Installed g++
+
+For this repo on Windows, a verified fallback path now exists with MSYS2 `g++`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-gpp.ps1
+```
+
 ## Run
 
 ```bash
 ./build/fashion_store
+```
+
+For the `g++` fallback build:
+
+```powershell
+.\build-gpp\fashion_store.exe
+```
+
+## Smoke Test
+
+With CMake:
+
+```bash
+ctest --test-dir build
+```
+
+With the verified `g++` fallback:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-gpp.ps1
 ```
 
 ## Web Shell
@@ -35,9 +63,13 @@ Open these files directly in a browser for the current static front-end preview.
 ## Current Status
 
 - Core domain scaffold is in place
-- Application services exist for auth, catalog, cart, customer, order, review, and returns
+- Application services exist for auth, catalog, cart, customer, order, review, returns, staff returns, and reports
+- Staff-side return management service supports approve, reject, restock, refund, and close flow
 - In-memory repositories support demo flow
+- File-based repositories support persistent round-trip smoke testing
 - Smoke test scaffold exists in `tests/core_smoke.cpp`
+- File persistence smoke test exists in `tests/file_persistence_smoke.cpp`
+- Order consistency, review/return guard, return management, and report smoke tests cover critical state rules
 - Rules and architecture docs are in `rule/` and `docs/`
 
 ## Demo Coverage
@@ -49,4 +81,6 @@ Open these files directly in a browser for the current static front-end preview.
 - place order, mark paid, and advance lifecycle
 - review creation after completed order
 - return request creation after completed order
+- staff return approval, rejection, restock, refund, and close lifecycle
+- revenue, best-selling product, and low-stock report generation
 - web login, product, and cart pages share local demo state

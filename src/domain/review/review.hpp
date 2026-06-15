@@ -52,6 +52,22 @@ public:
     const std::string& comment() const noexcept { return comment_; }
     bool verified_purchase() const noexcept { return verified_purchase_; }
 
+    static Review rehydrate(ReviewId review_id,
+                            CustomerId customer_id,
+                            ProductId product_id,
+                            std::optional<VariantId> variant_id,
+                            int rating,
+                            std::string comment,
+                            bool verified_purchase) {
+        return Review(std::move(review_id),
+                      std::move(customer_id),
+                      std::move(product_id),
+                      std::move(variant_id),
+                      rating,
+                      std::move(comment),
+                      verified_purchase);
+    }
+
 private:
     Review(ReviewId review_id,
            CustomerId customer_id,

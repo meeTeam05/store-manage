@@ -57,4 +57,20 @@ Money Voucher::calculate_discount(Money subtotal) const {
     return discount;
 }
 
+Status<VoucherError> Voucher::consume() {
+    if (remaining_uses_.has_value()) {
+        if (*remaining_uses_ <= 0) {
+            return Status<VoucherError>::fail(VoucherError::UsageLimitExceeded);
+        }
+        --(*remaining_uses_);
+    }
+    return ok_status<VoucherError>();
+}
+
+void Voucher::restore_use() noexcept {
+    if (remaining_uses_.has_value()) {
+        ++(*remaining_uses_);
+    }
+}
+
 }  // namespace fashion_store::domain::pricing

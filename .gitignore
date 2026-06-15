@@ -1,8 +1,10 @@
 .agents/
 build/
+build-gpp/
 *.obj
 *.o
 *.exe
 *.pdb
 *.ilk
 *.log
+*.bak

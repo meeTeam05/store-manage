@@ -67,7 +67,19 @@ public:
 
     const ProductId& id() const noexcept { return id_; }
     const std::string& name() const noexcept { return name_; }
+    Category category() const noexcept { return category_; }
+    const std::string& description() const noexcept { return description_; }
+    const std::string& collection() const noexcept { return collection_; }
+    ProductStatus status() const noexcept { return status_; }
     const std::vector<ProductVariant>& variants() const noexcept { return variants_; }
+
+    static Product rehydrate(ProductId id,
+                             std::string name,
+                             Category category,
+                             std::string description,
+                             std::string collection,
+                             ProductStatus status,
+                             std::vector<ProductVariant> variants);
 
     Status<ProductError> add_variant(const ProductVariantDraft& draft);
 

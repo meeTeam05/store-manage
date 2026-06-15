@@ -38,10 +38,22 @@ public:
             bool is_active);
 
     const std::string& code() const noexcept { return code_; }
+    DiscountType discount_type() const noexcept { return discount_type_; }
+    int discount_value() const noexcept { return discount_value_; }
+    Money min_order_amount() const noexcept { return min_order_amount_; }
+    const std::optional<Money>& max_discount_amount() const noexcept { return max_discount_amount_; }
+    std::chrono::system_clock::time_point start_at() const noexcept { return start_at_; }
+    std::chrono::system_clock::time_point end_at() const noexcept { return end_at_; }
+    const std::optional<int>& remaining_uses() const noexcept { return remaining_uses_; }
+    bool is_active() const noexcept { return is_active_; }
 
     Status<VoucherError> validate(Money subtotal, std::chrono::system_clock::time_point now) const;
 
     Money calculate_discount(Money subtotal) const;
+
+    Status<VoucherError> consume();
+
+    void restore_use() noexcept;
 
 private:
     std::string code_;
