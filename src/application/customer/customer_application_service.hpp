@@ -1,8 +1,18 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
+#include "domain/customer/customer.hpp"
+
 namespace fashion_store::application::customer {
+
+using fashion_store::domain::customer::Customer;
+using fashion_store::domain::customer::ICustomerRepository;
+using fashion_store::domain::shared::AccountId;
+using fashion_store::domain::shared::CustomerId;
+using fashion_store::domain::shared::ProductId;
+using fashion_store::domain::shared::Result;
 
 struct CustomerProfileView {
     std::string full_name;
@@ -10,15 +20,63 @@ struct CustomerProfileView {
     std::string city;
 };
 
+enum class CustomerServiceError {
+    CustomerNotFound
+};
+
 class CustomerApplicationService {
 public:
-    CustomerProfileView build_placeholder_profile() const {
+    explicit CustomerApplicationService(ICustomerRepository& customer_repository)
+        : customer_repository_(customer_repository) {}
+
+    Result<CustomerProfileView, CustomerServiceError> get_profile(const CustomerId& customer_id) const {
+        auto customer = customer_repository_.find_by_id(customer_id);
+        if (!customer.has_value()) {
+            return Result<CustomerProfileView, CustomerServiceError>::fail(CustomerServiceError::CustomerNotFound);
+        }
+        return Result<CustomerProfileView, CustomerServiceError>::ok(to_profile_view(*customer));
+    }
+
+    Result<CustomerProfileView, CustomerServiceError> get_profile_by_account_id(const AccountId& account_id) const {
+        auto customer = customer_repository_.find_by_account_id(account_id);
+        if (!customer.has_value()) {
+            return Result<CustomerProfileView, CustomerServiceError>::fail(CustomerServiceError::CustomerNotFound);
+        }
+        return Result<CustomerProfileView, CustomerServiceError>::ok(to_profile_view(*customer));
+    }
+
+    Result<Customer, CustomerServiceError> add_to_wishlist(const CustomerId& customer_id,
+                                                           const ProductId& product_id) {
+        auto customer = customer_repository_.find_by_id(customer_id);
+        if (!customer.has_value()) {
+            return Result<Customer, CustomerServiceError>::fail(CustomerServiceError::CustomerNotFound);
+        }
+        customer->add_to_wishlist(product_id);
+        customer_repository_.save(*customer);
+        return Result<Customer, CustomerServiceError>::ok(*customer);
+    }
+
+    Result<Customer, CustomerServiceError> remove_from_wishlist(const CustomerId& customer_id,
+                                                                const ProductId& product_id) {
+        auto customer = customer_repository_.find_by_id(customer_id);
+        if (!customer.has_value()) {
+            return Result<Customer, CustomerServiceError>::fail(CustomerServiceError::CustomerNotFound);
+        }
+        customer->remove_from_wishlist(product_id);
+        customer_repository_.save(*customer);
+        return Result<Customer, CustomerServiceError>::ok(*customer);
+    }
+
+private:
+    static CustomerProfileView to_profile_view(const Customer& customer) {
         return CustomerProfileView{
-            "Maison Aureline Client",
-            "0900000000",
-            "Ho Chi Minh City"
+            customer.full_name(),
+            customer.phone(),
+            customer.default_shipping_address().city
         };
     }
+
+    ICustomerRepository& customer_repository_;
 };
 
 }  // namespace fashion_store::application::customer

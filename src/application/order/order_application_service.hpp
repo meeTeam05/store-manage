@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>
@@ -57,6 +58,14 @@ struct PlaceOrderReceipt {
     Money total;
 };
 
+struct CheckoutPreview {
+    std::size_t item_count;
+    Money subtotal;
+    Money discount;
+    Money total;
+    bool voucher_applied;
+};
+
 class OrderApplicationService {
 public:
     OrderApplicationService(ICartRepository& cart_repository,
@@ -69,6 +78,50 @@ public:
           product_repository_(product_repository),
           inventory_repository_(inventory_repository),
           voucher_repository_(voucher_repository) {}
+
+    Result<CheckoutPreview, PlaceOrderError> preview_checkout(const CartId& cart_id,
+                                                              std::optional<std::string> voucher_code) {
+        auto cart = cart_repository_.find_by_id(cart_id);
+        if (!cart.has_value()) {
+            return Result<CheckoutPreview, PlaceOrderError>::fail(PlaceOrderError::CartNotFound);
+        }
+        if (cart->empty()) {
+            return Result<CheckoutPreview, PlaceOrderError>::fail(PlaceOrderError::EmptyCart);
+        }
+
+        for (const auto& item : cart->items()) {
+            auto variant_view = product_repository_.find_variant(item.variant_id);
+            if (!variant_view.has_value()) {
+                return Result<CheckoutPreview, PlaceOrderError>::fail(PlaceOrderError::ProductVariantNotFound);
+            }
+            auto inventory_item = inventory_repository_.find_by_variant_id(item.variant_id);
+            if (!inventory_item.has_value()) {
+                return Result<CheckoutPreview, PlaceOrderError>::fail(PlaceOrderError::InventoryNotFound);
+            }
+            if (inventory_item->available() < item.quantity) {
+                return Result<CheckoutPreview, PlaceOrderError>::fail(PlaceOrderError::InsufficientStock);
+            }
+        }
+
+        const auto subtotal = cart->subtotal();
+        auto discount = Money::from_minor(0);
+        bool voucher_applied = false;
+        if (voucher_code.has_value()) {
+            auto voucher = voucher_repository_.find_by_code(*voucher_code);
+            if (!voucher.has_value()) {
+                return Result<CheckoutPreview, PlaceOrderError>::fail(PlaceOrderError::VoucherNotFound);
+            }
+            auto voucher_validation = voucher->validate(subtotal, std::chrono::system_clock::now());
+            if (!voucher_validation) {
+                return Result<CheckoutPreview, PlaceOrderError>::fail(PlaceOrderError::VoucherInvalid);
+            }
+            discount = voucher->calculate_discount(subtotal);
+            voucher_applied = true;
+        }
+
+        return Result<CheckoutPreview, PlaceOrderError>::ok(
+            CheckoutPreview{cart->items().size(), subtotal, discount, subtotal - discount, voucher_applied});
+    }
 
     Result<PlaceOrderReceipt, PlaceOrderError> place_order(const PlaceOrderCommand& command) {
         auto cart = cart_repository_.find_by_id(command.cart_id);
@@ -250,6 +303,18 @@ public:
 
         order_repository_.save(*order);
         return Result<Order, PlaceOrderError>::ok(*order);
+    }
+
+    Result<Order, PlaceOrderError> get_order(const OrderId& order_id) const {
+        auto order = order_repository_.find_by_id(order_id);
+        if (!order.has_value()) {
+            return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
+        }
+        return Result<Order, PlaceOrderError>::ok(*order);
+    }
+
+    std::vector<Order> get_customer_orders(const CustomerId& customer_id) const {
+        return order_repository_.find_by_customer_id(customer_id);
     }
 
 private:

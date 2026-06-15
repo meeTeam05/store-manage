@@ -43,6 +43,40 @@ public:
         return Result<Cart, CartServiceError>::ok(cart);
     }
 
+    Result<Cart, CartServiceError> get_or_create_cart(const CartId& cart_id, const CustomerId& customer_id) {
+        auto cart = cart_repository_.find_by_id(cart_id).value_or(Cart(cart_id, customer_id));
+        cart_repository_.save(cart);
+        return Result<Cart, CartServiceError>::ok(cart);
+    }
+
+    Result<Cart, CartServiceError> change_quantity(const CartId& cart_id,
+                                                   const VariantId& variant_id,
+                                                   int quantity) {
+        auto cart = cart_repository_.find_by_id(cart_id);
+        if (!cart.has_value()) {
+            return Result<Cart, CartServiceError>::fail(CartServiceError::CartRuleViolation);
+        }
+        auto change_result = cart->change_quantity(variant_id, quantity);
+        if (!change_result) {
+            return Result<Cart, CartServiceError>::fail(CartServiceError::CartRuleViolation);
+        }
+        cart_repository_.save(*cart);
+        return Result<Cart, CartServiceError>::ok(*cart);
+    }
+
+    Result<Cart, CartServiceError> remove_item(const CartId& cart_id, const VariantId& variant_id) {
+        auto cart = cart_repository_.find_by_id(cart_id);
+        if (!cart.has_value()) {
+            return Result<Cart, CartServiceError>::fail(CartServiceError::CartRuleViolation);
+        }
+        auto remove_result = cart->remove_item(variant_id);
+        if (!remove_result) {
+            return Result<Cart, CartServiceError>::fail(CartServiceError::CartRuleViolation);
+        }
+        cart_repository_.save(*cart);
+        return Result<Cart, CartServiceError>::ok(*cart);
+    }
+
 private:
     ICartRepository& cart_repository_;
     IProductRepository& product_repository_;
