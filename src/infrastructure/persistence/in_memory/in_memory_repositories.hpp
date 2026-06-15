@@ -41,6 +41,7 @@ using fashion_store::domain::shared::CustomerId;
 using fashion_store::domain::shared::AccountId;
 using fashion_store::domain::shared::OrderId;
 using fashion_store::domain::shared::ProductId;
+using fashion_store::domain::shared::ReturnId;
 using fashion_store::domain::shared::VariantId;
 
 class InMemoryProductRepository : public IProductRepository {
@@ -144,6 +145,15 @@ public:
         return it->second;
     }
 
+    std::vector<InventoryItem> list_all() const override {
+        std::vector<InventoryItem> items;
+        items.reserve(items_.size());
+        for (const auto& [_, item] : items_) {
+            items.push_back(item);
+        }
+        return items;
+    }
+
     void save(const InventoryItem& item) override {
         items_.insert_or_assign(item.variant_id().value, item);
     }
@@ -195,6 +205,15 @@ public:
             if (order.customer_id() == customer_id) {
                 orders.push_back(order);
             }
+        }
+        return orders;
+    }
+
+    std::vector<Order> list_all() const override {
+        std::vector<Order> orders;
+        orders.reserve(orders_.size());
+        for (const auto& [_, order] : orders_) {
+            orders.push_back(order);
         }
         return orders;
     }
@@ -257,6 +276,15 @@ private:
 
 class InMemoryReturnRepository : public IReturnRepository {
 public:
+    std::optional<ReturnRequest> find_by_id(const ReturnId& return_id) const override {
+        for (const auto& request : requests_) {
+            if (request.id() == return_id) {
+                return request;
+            }
+        }
+        return std::nullopt;
+    }
+
     std::vector<ReturnRequest> find_by_order_id(const OrderId& order_id) const override {
         std::vector<ReturnRequest> result;
         for (const auto& request : requests_) {
@@ -268,6 +296,12 @@ public:
     }
 
     void save(const ReturnRequest& request) override {
+        for (auto& existing : requests_) {
+            if (existing.id() == request.id()) {
+                existing = request;
+                return;
+            }
+        }
         requests_.push_back(request);
     }
 

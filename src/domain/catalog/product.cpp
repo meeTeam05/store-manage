@@ -18,6 +18,24 @@ Product::Product(ProductId id,
     require(!name_.empty(), "product name must not be empty");
 }
 
+Product Product::rehydrate(ProductId id,
+                           std::string name,
+                           Category category,
+                           std::string description,
+                           std::string collection,
+                           ProductStatus status,
+                           std::vector<ProductVariant> variants) {
+    Product product(
+        std::move(id),
+        std::move(name),
+        category,
+        std::move(description),
+        std::move(collection),
+        status);
+    product.variants_ = std::move(variants);
+    return product;
+}
+
 Status<ProductError> Product::add_variant(const ProductVariantDraft& draft) {
     if (draft.price < Money::from_minor(0)) {
         return Status<ProductError>::fail(ProductError::InvalidPrice);

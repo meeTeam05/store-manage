@@ -81,12 +81,26 @@ public:
     const OrderId& id() const noexcept { return id_; }
     const CustomerId& customer_id() const noexcept { return customer_id_; }
     const std::vector<OrderItem>& items() const noexcept { return items_; }
+    const ShippingAddress& shipping_address_snapshot() const noexcept { return shipping_address_snapshot_; }
     OrderStatus status() const noexcept { return status_; }
+    PaymentMethod payment_method() const noexcept { return payment_method_; }
     PaymentStatus payment_status() const noexcept { return payment_status_; }
+    const std::optional<std::string>& voucher_code() const noexcept { return voucher_code_; }
+    Money discount_total() const noexcept { return discount_total_; }
 
     Money subtotal() const noexcept;
 
     Money total() const noexcept;
+
+    static Order rehydrate(OrderId id,
+                           CustomerId customer_id,
+                           std::vector<OrderItem> items,
+                           ShippingAddress shipping_address_snapshot,
+                           PaymentMethod payment_method,
+                           OrderStatus status,
+                           PaymentStatus payment_status,
+                           std::optional<std::string> voucher_code,
+                           Money discount_total);
 
     Status<OrderError> apply_discount(Money discount, std::optional<std::string> voucher_code = std::nullopt);
 

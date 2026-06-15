@@ -17,6 +17,28 @@ Order::Order(OrderId id,
     require(!items_.empty(), "order must contain at least one item");
 }
 
+Order Order::rehydrate(OrderId id,
+                       CustomerId customer_id,
+                       std::vector<OrderItem> items,
+                       ShippingAddress shipping_address_snapshot,
+                       PaymentMethod payment_method,
+                       OrderStatus status,
+                       PaymentStatus payment_status,
+                       std::optional<std::string> voucher_code,
+                       Money discount_total) {
+    Order order(
+        std::move(id),
+        std::move(customer_id),
+        std::move(items),
+        std::move(shipping_address_snapshot),
+        payment_method);
+    order.status_ = status;
+    order.payment_status_ = payment_status;
+    order.voucher_code_ = std::move(voucher_code);
+    order.discount_total_ = discount_total;
+    return order;
+}
+
 Money Order::subtotal() const noexcept {
     auto total = Money::from_minor(0);
     for (const auto& item : items_) {
