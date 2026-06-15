@@ -35,9 +35,10 @@
 
 - Domain objects and repository contracts exist
 - Application services for catalog, cart, customer, and order exist
+- Authentication and customer profile flows exist through application services
 - In-memory repositories exist for local demo flow
 - `src/main.cpp` seeds sample data and runs one purchase flow
-- `web/` contains placeholder luxury brand screens
+- `web/` contains linked storefront pages backed by shared demo state
 
 ## Next Recommended Work
 

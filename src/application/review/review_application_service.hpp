@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "domain/order/order_repository.hpp"
 #include "domain/review/review.hpp"
@@ -57,6 +58,14 @@ public:
 
         review_repository_.save(review.value());
         return Result<Review, CreateReviewError>::ok(review.value());
+    }
+
+    std::vector<Review> get_product_reviews(const ProductId& product_id) const {
+        return review_repository_.find_by_product_id(product_id);
+    }
+
+    std::vector<Review> get_customer_reviews(const CustomerId& customer_id) const {
+        return review_repository_.find_by_customer_id(customer_id);
     }
 
 private:

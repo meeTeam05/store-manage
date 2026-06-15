@@ -350,6 +350,23 @@ h3 {
   color: #5c544e;
 }
 
+.cart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.text-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #5c544e;
+  text-decoration: underline;
+  font: inherit;
+}
+
 .cart-summary {
   padding: 24px;
   align-self: start;

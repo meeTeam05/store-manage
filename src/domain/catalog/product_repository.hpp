@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <vector>
 
 #include "domain/catalog/product.hpp"
 
@@ -18,6 +19,7 @@ public:
 
     virtual std::optional<Product> find_by_id(const ProductId& product_id) const = 0;
     virtual std::optional<CatalogVariantView> find_variant(const VariantId& variant_id) const = 0;
+    virtual std::vector<Product> list_all() const = 0;
     virtual void save(const Product& product) = 0;
 };
 

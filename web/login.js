@@ -6,9 +6,10 @@ if (form && statusElement) {
     event.preventDefault();
     const formData = new FormData(form);
     const username = String(formData.get("username") || "").trim();
-
-    statusElement.textContent = username
-      ? `Static luxury shell only. Connect this form to application auth later. Submitted for ${username}.`
-      : "Username is required.";
+    const password = String(formData.get("password") || "").trim();
+    const result = window.storefrontState.signIn(username, password);
+    statusElement.textContent = result.ok
+      ? `Signed in as ${result.session.customerName}. Cart and wishlist demo state are now linked.`
+      : result.error;
   });
 }

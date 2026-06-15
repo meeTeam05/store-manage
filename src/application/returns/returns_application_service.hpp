@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "domain/order/order_repository.hpp"
 #include "domain/returns/return_policy.hpp"
@@ -50,6 +51,10 @@ public:
 
         return_repository_.save(request.value());
         return Result<ReturnRequest, CreateReturnError>::ok(request.value());
+    }
+
+    std::vector<ReturnRequest> get_order_returns(const OrderId& order_id) const {
+        return return_repository_.find_by_order_id(order_id);
     }
 
 private:

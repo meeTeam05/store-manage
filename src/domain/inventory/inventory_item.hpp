@@ -17,59 +17,20 @@ enum class InventoryError {
 
 class InventoryItem {
 public:
-    InventoryItem(VariantId variant_id, int on_hand, int reserved = 0)
-        : variant_id_(std::move(variant_id)), on_hand_(on_hand), reserved_(reserved) {
-        require(on_hand_ >= 0, "on hand must be non-negative");
-        require(reserved_ >= 0, "reserved must be non-negative");
-        require(reserved_ <= on_hand_, "reserved cannot exceed on hand");
-    }
+    InventoryItem(VariantId variant_id, int on_hand, int reserved = 0);
 
     const VariantId& variant_id() const noexcept { return variant_id_; }
     int on_hand() const noexcept { return on_hand_; }
     int reserved() const noexcept { return reserved_; }
     int available() const noexcept { return on_hand_ - reserved_; }
 
-    Status<InventoryError> reserve(int quantity) {
-        if (quantity <= 0) {
-            return Status<InventoryError>::fail(InventoryError::InvalidQuantity);
-        }
-        if (quantity > available()) {
-            return Status<InventoryError>::fail(InventoryError::InsufficientAvailable);
-        }
-        reserved_ += quantity;
-        return ok_status<InventoryError>();
-    }
+    Status<InventoryError> reserve(int quantity);
 
-    Status<InventoryError> release(int quantity) {
-        if (quantity <= 0) {
-            return Status<InventoryError>::fail(InventoryError::InvalidQuantity);
-        }
-        if (quantity > reserved_) {
-            return Status<InventoryError>::fail(InventoryError::InsufficientReserved);
-        }
-        reserved_ -= quantity;
-        return ok_status<InventoryError>();
-    }
+    Status<InventoryError> release(int quantity);
 
-    Status<InventoryError> commit_sale(int quantity) {
-        if (quantity <= 0) {
-            return Status<InventoryError>::fail(InventoryError::InvalidQuantity);
-        }
-        if (quantity > reserved_) {
-            return Status<InventoryError>::fail(InventoryError::InsufficientReserved);
-        }
-        reserved_ -= quantity;
-        on_hand_ -= quantity;
-        return ok_status<InventoryError>();
-    }
+    Status<InventoryError> commit_sale(int quantity);
 
-    Status<InventoryError> restock(int quantity) {
-        if (quantity <= 0) {
-            return Status<InventoryError>::fail(InventoryError::InvalidQuantity);
-        }
-        on_hand_ += quantity;
-        return ok_status<InventoryError>();
-    }
+    Status<InventoryError> restock(int quantity);
 
 private:
     VariantId variant_id_;
