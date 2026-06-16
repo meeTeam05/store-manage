@@ -7,6 +7,20 @@ window.storefrontData = {
       passwordHash: "hash:123456",
       role: "Customer",
       customerId: "customer-001"
+    },
+    {
+      accountId: "account-002",
+      username: "staff001",
+      passwordHash: "hash:staff123",
+      role: "Staff",
+      employeeId: "employee-001"
+    },
+    {
+      accountId: "account-003",
+      username: "admin001",
+      passwordHash: "hash:admin123",
+      role: "Admin",
+      employeeId: "employee-002"
     }
   ],
   customers: [
@@ -16,6 +30,20 @@ window.storefrontData = {
       fullName: "Nguyen Van A",
       phone: "0900000000",
       city: "Ho Chi Minh City"
+    }
+  ],
+  employees: [
+    {
+      employeeId: "employee-001",
+      accountId: "account-002",
+      fullName: "Store Staff",
+      position: "Sales Staff"
+    },
+    {
+      employeeId: "employee-002",
+      accountId: "account-003",
+      fullName: "System Admin",
+      position: "Administrator"
     }
   ],
   products: [

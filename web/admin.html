@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maison Aureline | Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="catalog-body">
+  <header class="site-header">
+    <a class="brand" href="index.html">Maison Aureline</a>
+    <nav class="nav">
+      <a href="index.html">Storefront</a>
+      <a href="staff.html">Staff</a>
+      <a href="login.html">Switch Account</a>
+    </nav>
+  </header>
+
+  <main class="dashboard-shell">
+    <section class="dashboard-heading">
+      <p class="eyebrow">Admin Console</p>
+      <h1>System Management</h1>
+      <p id="admin-session" class="status"></p>
+    </section>
+
+    <section class="dashboard-grid">
+      <article>
+        <span>01</span>
+        <h2>Catalog</h2>
+        <p>Create products, add variants, update status, and manage merchandising data.</p>
+      </article>
+      <article>
+        <span>02</span>
+        <h2>Promotions</h2>
+        <p>Create and monitor voucher rules, limits, active windows, and usage counts.</p>
+      </article>
+      <article>
+        <span>03</span>
+        <h2>Reports</h2>
+        <p>Review revenue, best-selling products, and low-stock inventory summaries.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="storefront-data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="storefront-state.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

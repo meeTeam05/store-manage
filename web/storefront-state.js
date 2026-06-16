@@ -25,9 +25,14 @@
     return readJson(storageKeys.session, null);
   }
 
+  function normalizePasswordHash(password) {
+    return password.startsWith("hash:") ? password : `hash:${password}`;
+  }
+
   function signIn(username, passwordHash) {
+    const normalizedPasswordHash = normalizePasswordHash(passwordHash);
     const account = window.storefrontData.accounts.find(
-      (entry) => entry.username === username && entry.passwordHash === passwordHash
+      (entry) => entry.username === username && entry.passwordHash === normalizedPasswordHash
     );
     if (!account) {
       return { ok: false, error: "Invalid credentials for demo account." };
@@ -36,15 +41,43 @@
     const customer = window.storefrontData.customers.find(
       (entry) => entry.customerId === account.customerId
     );
+    const employee = window.storefrontData.employees.find(
+      (entry) => entry.employeeId === account.employeeId
+    );
     const session = {
       accountId: account.accountId,
       username: account.username,
       role: account.role,
       customerId: account.customerId,
+      employeeId: account.employeeId,
+      displayName: customer ? customer.fullName : (employee ? employee.fullName : account.username),
       customerName: customer ? customer.fullName : account.username
     };
     writeJson(storageKeys.session, session);
     return { ok: true, session };
+  }
+
+  async function signInWithApi(username, passwordHash) {
+    const normalizedPasswordHash = normalizePasswordHash(passwordHash);
+    if (window.storefrontApi) {
+      const response = await window.storefrontApi.signIn(username, normalizedPasswordHash);
+      if (response.ok && response.data) {
+        const account = response.data;
+        const customer = window.storefrontData.customers.find(
+          (entry) => entry.customerId === account.customerId
+        );
+        const session = {
+          accountId: account.accountId || account.account_id,
+          username: account.username,
+          role: account.role,
+          customerId: account.customerId || (customer ? customer.customerId : null),
+          customerName: account.customerName || (customer ? customer.fullName : account.username)
+        };
+        writeJson(storageKeys.session, session);
+        return { ok: true, session };
+      }
+    }
+    return signIn(username, normalizedPasswordHash);
   }
 
   function signOut() {
@@ -89,6 +122,16 @@
 
     persistCart(items);
     return { ok: true, items };
+  }
+
+  async function addToCartWithApi(productId, variantId, quantity) {
+    if (window.storefrontApi) {
+      const response = await window.storefrontApi.addToCart(productId, variantId, quantity);
+      if (response.ok) {
+        return addToCart(productId, variantId, quantity);
+      }
+    }
+    return addToCart(productId, variantId, quantity);
   }
 
   function setCartQuantity(variantId, quantity) {
@@ -146,9 +189,11 @@
     formatMoney,
     getSession,
     signIn,
+    signInWithApi,
     signOut,
     getProduct,
     addToCart,
+    addToCartWithApi,
     setCartQuantity,
     removeFromCart,
     buildCartSummary
