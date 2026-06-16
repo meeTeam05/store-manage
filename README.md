@@ -63,7 +63,7 @@ Open these files directly in a browser for the current static front-end preview.
 ## Current Status
 
 - Core domain scaffold is in place
-- Application services exist for auth, catalog, cart, customer, order, review, returns, staff returns, and reports
+- Application services exist for auth, catalog, cart, customer, order, review, returns, staff operations, payment, shipping, reports, and API facade
 - Staff-side return management service supports approve, reject, restock, refund, and close flow
 - In-memory repositories support demo flow
 - File-based repositories support persistent round-trip smoke testing
@@ -83,4 +83,9 @@ Open these files directly in a browser for the current static front-end preview.
 - return request creation after completed order
 - staff return approval, rejection, restock, refund, and close lifecycle
 - revenue, best-selling product, and low-stock report generation
+- staff catalog, inventory, order, and voucher management use cases
+- catalog product search, filter, and sort use cases
+- simulated payment and shipping flows
+- API facade for sign-in, catalog search, cart, and checkout flows
 - web login, product, and cart pages share local demo state
+- web API client can call backend endpoints and falls back to demo state when the API is unavailable

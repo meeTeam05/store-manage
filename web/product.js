@@ -55,13 +55,13 @@
 
   renderOptions();
 
-  addToCartButton.addEventListener("click", () => {
+  addToCartButton.addEventListener("click", async () => {
     const variant = findVariant();
     if (!variant) {
       status.textContent = "Selected variant is unavailable.";
       return;
     }
-    const result = window.storefrontState.addToCart(product.productId, variant.variantId, 1);
+    const result = await window.storefrontState.addToCartWithApi(product.productId, variant.variantId, 1);
     status.textContent = result.ok
       ? `Added ${product.name} / ${variant.color} / ${variant.size} to cart.`
       : result.error;

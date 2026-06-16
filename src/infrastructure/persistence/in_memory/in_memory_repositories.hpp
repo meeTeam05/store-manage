@@ -14,6 +14,7 @@
 #include "domain/pricing/voucher_repository.hpp"
 #include "domain/review/review.hpp"
 #include "domain/returns/return_request.hpp"
+#include "domain/staff/employee.hpp"
 
 namespace fashion_store::infrastructure::persistence::in_memory {
 
@@ -36,9 +37,12 @@ using fashion_store::domain::review::IReviewRepository;
 using fashion_store::domain::review::Review;
 using fashion_store::domain::returns::IReturnRepository;
 using fashion_store::domain::returns::ReturnRequest;
+using fashion_store::domain::staff::Employee;
+using fashion_store::domain::staff::IEmployeeRepository;
 using fashion_store::domain::shared::CartId;
 using fashion_store::domain::shared::CustomerId;
 using fashion_store::domain::shared::AccountId;
+using fashion_store::domain::shared::EmployeeId;
 using fashion_store::domain::shared::OrderId;
 using fashion_store::domain::shared::ProductId;
 using fashion_store::domain::shared::ReturnId;
@@ -133,6 +137,33 @@ public:
 
 private:
     std::unordered_map<std::string, Account> accounts_;
+};
+
+class InMemoryEmployeeRepository : public IEmployeeRepository {
+public:
+    std::optional<Employee> find_by_id(const EmployeeId& employee_id) const override {
+        auto it = employees_.find(employee_id.value);
+        if (it == employees_.end()) {
+            return std::nullopt;
+        }
+        return it->second;
+    }
+
+    std::optional<Employee> find_by_account_id(const AccountId& account_id) const override {
+        for (const auto& [_, employee] : employees_) {
+            if (employee.account_id() == account_id) {
+                return employee;
+            }
+        }
+        return std::nullopt;
+    }
+
+    void save(const Employee& employee) override {
+        employees_.insert_or_assign(employee.id().value, employee);
+    }
+
+private:
+    std::unordered_map<std::string, Employee> employees_;
 };
 
 class InMemoryInventoryRepository : public IInventoryRepository {

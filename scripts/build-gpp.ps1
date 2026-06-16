@@ -43,4 +43,19 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $compiler -std=c++20 -Isrc "tests/report_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_report_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+& $compiler -std=c++20 -Isrc "tests/staff_catalog_management_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_staff_catalog_management_smoke.exe")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $compiler -std=c++20 -Isrc "tests/payment_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_payment_smoke.exe")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $compiler -std=c++20 -Isrc "tests/shipping_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_shipping_smoke.exe")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $compiler -std=c++20 -Isrc "tests/api_facade_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_api_facade_smoke.exe")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $compiler -std=c++20 -Isrc "tests/auth_roles_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_auth_roles_smoke.exe")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "Build completed in $outputDir"

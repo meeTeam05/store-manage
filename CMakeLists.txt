@@ -74,3 +74,43 @@ add_executable(fashion_store_report_smoke
 target_link_libraries(fashion_store_report_smoke PRIVATE fashion_store_core)
 
 add_test(NAME fashion_store_report_smoke COMMAND fashion_store_report_smoke)
+
+add_executable(fashion_store_staff_catalog_management_smoke
+    tests/staff_catalog_management_smoke.cpp
+)
+
+target_link_libraries(fashion_store_staff_catalog_management_smoke PRIVATE fashion_store_core)
+
+add_test(NAME fashion_store_staff_catalog_management_smoke COMMAND fashion_store_staff_catalog_management_smoke)
+
+add_executable(fashion_store_payment_smoke
+    tests/payment_smoke.cpp
+)
+
+target_link_libraries(fashion_store_payment_smoke PRIVATE fashion_store_core)
+
+add_test(NAME fashion_store_payment_smoke COMMAND fashion_store_payment_smoke)
+
+add_executable(fashion_store_shipping_smoke
+    tests/shipping_smoke.cpp
+)
+
+target_link_libraries(fashion_store_shipping_smoke PRIVATE fashion_store_core)
+
+add_test(NAME fashion_store_shipping_smoke COMMAND fashion_store_shipping_smoke)
+
+add_executable(fashion_store_api_facade_smoke
+    tests/api_facade_smoke.cpp
+)
+
+target_link_libraries(fashion_store_api_facade_smoke PRIVATE fashion_store_core)
+
+add_test(NAME fashion_store_api_facade_smoke COMMAND fashion_store_api_facade_smoke)
+
+add_executable(fashion_store_auth_roles_smoke
+    tests/auth_roles_smoke.cpp
+)
+
+target_link_libraries(fashion_store_auth_roles_smoke PRIVATE fashion_store_core)
+
+add_test(NAME fashion_store_auth_roles_smoke COMMAND fashion_store_auth_roles_smoke)

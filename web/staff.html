@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maison Aureline | Staff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="catalog-body">
+  <header class="site-header">
+    <a class="brand" href="index.html">Maison Aureline</a>
+    <nav class="nav">
+      <a href="index.html">Storefront</a>
+      <a href="cart.html">Cart</a>
+      <a href="login.html">Switch Account</a>
+    </nav>
+  </header>
+
+  <main class="dashboard-shell">
+    <section class="dashboard-heading">
+      <p class="eyebrow">Staff Workspace</p>
+      <h1>Store Operations</h1>
+      <p id="staff-session" class="status"></p>
+    </section>
+
+    <section class="dashboard-grid">
+      <article>
+        <span>01</span>
+        <h2>Orders</h2>
+        <p>Pack, ship, deliver, and cancel customer orders through staff services.</p>
+      </article>
+      <article>
+        <span>02</span>
+        <h2>Inventory</h2>
+        <p>Update stock levels, restock variants, and monitor low-stock items.</p>
+      </article>
+      <article>
+        <span>03</span>
+        <h2>Returns</h2>
+        <p>Approve, reject, restock, refund, and close return requests.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="storefront-data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="storefront-state.js"></script>
+  <script src="staff.js"></script>
+</body>
+</html>
