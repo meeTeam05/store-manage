@@ -8,6 +8,11 @@ $orderConsistencySmokeExe = Join-Path $root "build-gpp/fashion_store_order_consi
 $reviewReturnGuardsSmokeExe = Join-Path $root "build-gpp/fashion_store_review_return_guards_smoke.exe"
 $returnManagementSmokeExe = Join-Path $root "build-gpp/fashion_store_return_management_smoke.exe"
 $reportSmokeExe = Join-Path $root "build-gpp/fashion_store_report_smoke.exe"
+$staffCatalogManagementSmokeExe = Join-Path $root "build-gpp/fashion_store_staff_catalog_management_smoke.exe"
+$paymentSmokeExe = Join-Path $root "build-gpp/fashion_store_payment_smoke.exe"
+$shippingSmokeExe = Join-Path $root "build-gpp/fashion_store_shipping_smoke.exe"
+$apiFacadeSmokeExe = Join-Path $root "build-gpp/fashion_store_api_facade_smoke.exe"
+$authRolesSmokeExe = Join-Path $root "build-gpp/fashion_store_auth_roles_smoke.exe"
 
 & powershell -ExecutionPolicy Bypass -File $buildScript
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -28,6 +33,21 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $reportSmokeExe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $staffCatalogManagementSmokeExe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $paymentSmokeExe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $shippingSmokeExe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $apiFacadeSmokeExe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& $authRolesSmokeExe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Smoke tests passed"
