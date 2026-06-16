@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "domain/shared/types.hpp"
@@ -21,6 +22,11 @@ public:
         require(!account_id_.value.empty(), "employee account id must not be empty");
     }
 
+    const EmployeeId& id() const noexcept { return id_; }
+    const AccountId& account_id() const noexcept { return account_id_; }
+    const std::string& full_name() const noexcept { return full_name_; }
+    const std::string& position() const noexcept { return position_; }
+
 private:
     EmployeeId id_;
     AccountId account_id_;
@@ -31,6 +37,10 @@ private:
 class IEmployeeRepository {
 public:
     virtual ~IEmployeeRepository() = default;
+
+    virtual std::optional<Employee> find_by_id(const EmployeeId& employee_id) const = 0;
+    virtual std::optional<Employee> find_by_account_id(const AccountId& account_id) const = 0;
+    virtual void save(const Employee& employee) = 0;
 };
 
 }  // namespace fashion_store::domain::staff
