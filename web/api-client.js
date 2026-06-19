@@ -40,12 +40,12 @@
       });
     },
 
-    async checkout() {
+    async checkout(payment = null) {
       const session = window.storefrontState ? window.storefrontState.getSession() : null;
       const summary = window.storefrontState ? window.storefrontState.buildCartSummary() : null;
       return request("/api/checkout", {
         method: "POST",
-        body: JSON.stringify({ session, summary })
+        body: JSON.stringify({ session, summary, payment })
       });
     }
   };

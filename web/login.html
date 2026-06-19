@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Maison Aureline | Sign In</title>
+  <title>Store Manage | Sign In</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
 </head>
 <body class="login-body">
   <header class="site-header">
-    <a class="brand" href="index.html">Maison Aureline</a>
+    <a class="brand" href="index.html">Store Manage</a>
     <nav class="nav">
       <a href="index.html">Home</a>
       <a href="login.html">Sign In</a>
@@ -19,22 +19,43 @@
   </header>
 
   <main class="login-shell">
-    <section class="login-panel">
-      <p class="eyebrow">Client Access</p>
-      <h1>Sign In</h1>
-      <form id="login-form" class="login-form">
-        <label>
-          <span>Username</span>
-          <input type="text" name="username" autocomplete="username" required>
-        </label>
-        <label>
-          <span>Password</span>
-          <input type="password" name="password" autocomplete="current-password" required>
-        </label>
-        <button class="button primary" type="submit">Continue</button>
-      </form>
-      <div id="role-hints" class="role-hints"></div>
-      <p id="status" class="status" aria-live="polite"></p>
+    <section class="login-stage">
+      <div class="login-intro">
+        <p class="eyebrow">Local Access</p>
+        <h1>Test customer and staff flows from one local sign-in screen.</h1>
+        <p class="login-lead">
+          This shell stays local-first so you can verify cart, role routing, and dashboard access
+          without needing a live backend.
+        </p>
+        <div class="login-notes">
+          <div>
+            <span class="login-note-label">Mode</span>
+            <p>Static web shell with API fallback</p>
+          </div>
+          <div>
+            <span class="login-note-label">Target</span>
+            <p>Customer cart, staff workspace, admin console</p>
+          </div>
+        </div>
+      </div>
+
+      <section class="login-panel">
+        <p class="eyebrow">Sign In</p>
+        <h2>Choose a local account</h2>
+        <form id="login-form" class="login-form">
+          <label>
+            <span>Username</span>
+            <input type="text" name="username" autocomplete="username" placeholder="client001" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" autocomplete="current-password" placeholder="123456" required>
+          </label>
+          <button class="button primary full-width" type="submit">Continue To Workspace</button>
+        </form>
+        <div id="role-hints" class="role-hints"></div>
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
     </section>
   </main>
 
