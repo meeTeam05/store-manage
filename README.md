@@ -1,6 +1,6 @@
 # Fashion Store System
 
-Single-brand fashion store system with a C++20 core and a luxury-brand support web shell.
+Single-brand fashion store system with a C++20 core and a local support web shell for functional testing.
 
 ## Architecture
 
@@ -53,10 +53,11 @@ powershell -ExecutionPolicy Bypass -File scripts/test-gpp.ps1
 
 ## Web Shell
 
-- `web/index.html`: luxury-brand landing page
+- `web/index.html`: local storefront landing page
 - `web/product.html`: product detail shell
 - `web/cart.html`: cart shell
 - `web/login.html`: login shell
+- `web/payment.html`: local payment step before order submission
 
 Open these files directly in a browser for the current static front-end preview.
 
@@ -87,5 +88,5 @@ Open these files directly in a browser for the current static front-end preview.
 - catalog product search, filter, and sort use cases
 - simulated payment and shipping flows
 - API facade for sign-in, catalog search, cart, and checkout flows
-- web login, product, and cart pages share local demo state
+- web login, product, cart, and payment pages share local demo state
 - web API client can call backend endpoints and falls back to demo state when the API is unavailable

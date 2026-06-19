@@ -39,7 +39,7 @@
   - in-memory persistence scaffold
   - file persistence scaffold
 - `web/`
-  - luxury storefront shell
+  - local storefront shell for functional testing
 
 ## Current State
 
@@ -56,12 +56,12 @@
 - Payment and shipping modules provide simulated operational flows
 - API facade exposes sign-in, catalog search, cart, and checkout use cases for future HTTP adapters
 - `src/main.cpp` seeds sample data and runs one purchase flow
-- `web/` contains linked storefront pages backed by shared demo state with API-client fallback support
+- `web/` contains linked storefront pages for login, catalog, cart, and payment backed by shared demo state with API-client fallback support
 - Fallback Windows build and smoke-test scripts exist under `scripts/`
 
 ## Next Recommended Work
 
 1. Add real HTTP server adapter around `src/api/FashionStoreApi`
-2. Connect web checkout and cart refresh to live backend responses
+2. Connect web payment submission, checkout, and cart refresh to live backend responses
 3. Replace file persistence with SQLite or another real database adapter if required
 4. Add deeper unit tests for invalid payment, shipping, and admin edge cases
