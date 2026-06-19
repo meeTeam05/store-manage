@@ -116,6 +116,11 @@ Status<OrderError> Order::cancel() {
         status_ != OrderStatus::Paid) {
         return Status<OrderError>::fail(OrderError::InvalidStateTransition);
     }
+    if (status_ == OrderStatus::Paid) {
+        payment_status_ = PaymentStatus::Refunded;
+    } else if (status_ == OrderStatus::AwaitingPayment) {
+        payment_status_ = PaymentStatus::Failed;
+    }
     status_ = OrderStatus::Cancelled;
     return ok_status<OrderError>();
 }
