@@ -96,7 +96,7 @@ FashionStoreSystem
 - Tìm kiếm, lọc và sắp xếp sản phẩm theo giá, size, màu, danh mục.
 - Giỏ hàng cho phép thêm, xóa, cập nhật số lượng và tính tổng tiền.
 - Đặt hàng, quản lý chi tiết đơn hàng và trạng thái đơn hàng.
-- Thanh toán bằng tiền mặt, chuyển khoản hoặc ví điện tử ở mức mô phỏng.
+- Thanh toán bằng tiền mặt, chuyển khoản hoặc ví điện tử ở mức mô phỏng, có thể đi qua bước chọn phương thức thanh toán trong local web shell.
 - Áp dụng mã giảm giá và chương trình khuyến mãi.
 - Đánh giá sản phẩm bằng sao và bình luận sau khi mua hàng.
 - Gửi yêu cầu đổi trả hàng khi sai size, lỗi sản phẩm hoặc không đúng mô tả.

@@ -56,8 +56,8 @@
     });
 
     const session = window.storefrontState.getSession();
-    checkoutButton.textContent = session ? "Proceed To Checkout" : "Sign In To Checkout";
-    checkoutButton.href = session ? "login.html#checkout-ready" : "login.html";
+    checkoutButton.textContent = session ? "Continue To Payment" : "Sign In To Continue";
+    checkoutButton.href = session ? "payment.html" : "login.html";
   }
 
   render();

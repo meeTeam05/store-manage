@@ -1,5 +1,5 @@
 window.storefrontData = {
-  brandName: "Maison Aureline",
+  brandName: "Store Manage",
   accounts: [
     {
       accountId: "account-001",

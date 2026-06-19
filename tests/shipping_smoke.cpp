@@ -52,5 +52,23 @@ int main() {
     assert(!invalid);
     assert(invalid.error() == ShippingError::InvalidAddress);
 
+    auto invalid_tracking = Shipment::create(
+        OrderId{"order-shipping-003"},
+        ShippingAddress{"Client", "0900000000", "1 Le Loi", "", "Ben Nghe", "District 1", "Ho Chi Minh City", "Vietnam"},
+        ShippingMethod::Standard,
+        Money::from_minor(25000),
+        "");
+    assert(!invalid_tracking);
+    assert(invalid_tracking.error() == ShippingError::InvalidShipmentData);
+
+    auto invalid_fee = Shipment::create(
+        OrderId{"order-shipping-004"},
+        ShippingAddress{"Client", "0900000000", "1 Le Loi", "", "Ben Nghe", "District 1", "Ho Chi Minh City", "Vietnam"},
+        ShippingMethod::Express,
+        Money::from_minor(-1),
+        "SHIP-order-shipping-004");
+    assert(!invalid_fee);
+    assert(invalid_fee.error() == ShippingError::InvalidShipmentData);
+
     return 0;
 }

@@ -44,7 +44,7 @@ int main() {
 
     Product product(
         ProductId{"product-001"},
-        "Maison Aureline Overshirt",
+        "Structured House Overshirt",
         Category::Outerwear,
         "Relaxed luxury overshirt for daily wear.",
         "Resort 2026");

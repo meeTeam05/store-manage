@@ -28,6 +28,7 @@ enum class ShippingStatus {
 
 enum class ShippingError {
     InvalidAddress,
+    InvalidShipmentData,
     InvalidStateTransition
 };
 
@@ -47,6 +48,9 @@ public:
         if (address.recipient_name.empty() || address.phone.empty() ||
             address.line1.empty() || address.city.empty() || address.country.empty()) {
             return Result<Shipment, ShippingError>::fail(ShippingError::InvalidAddress);
+        }
+        if (tracking_code.empty() || fee < Money::from_minor(0)) {
+            return Result<Shipment, ShippingError>::fail(ShippingError::InvalidShipmentData);
         }
         return Result<Shipment, ShippingError>::ok(Shipment(
             std::move(order_id),

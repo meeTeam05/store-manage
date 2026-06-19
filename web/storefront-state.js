@@ -25,6 +25,14 @@
     return readJson(storageKeys.session, null);
   }
 
+  function getCustomerProfile() {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return null;
+    }
+    return window.storefrontData.customers.find((entry) => entry.customerId === session.customerId) || null;
+  }
+
   function normalizePasswordHash(password) {
     return password.startsWith("hash:") ? password : `hash:${password}`;
   }
@@ -154,6 +162,11 @@
     return { ok: true, items };
   }
 
+  function clearCart() {
+    persistCart([]);
+    return { ok: true, items: [] };
+  }
+
   function hydrateCartItems() {
     return getCart().map((entry) => {
       const product = getProduct(entry.productId);
@@ -188,6 +201,7 @@
   window.storefrontState = {
     formatMoney,
     getSession,
+    getCustomerProfile,
     signIn,
     signInWithApi,
     signOut,
@@ -196,6 +210,7 @@
     addToCartWithApi,
     setCartQuantity,
     removeFromCart,
+    clearCart,
     buildCartSummary
   };
 })();

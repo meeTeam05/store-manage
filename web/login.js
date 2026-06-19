@@ -4,9 +4,21 @@ const roleHintsElement = document.getElementById("role-hints");
 
 if (roleHintsElement) {
   roleHintsElement.innerHTML = `
-    <span>Customer: client001 / 123456</span>
-    <span>Staff: staff001 / staff123</span>
-    <span>Admin: admin001 / admin123</span>
+    <article class="role-card">
+      <strong>Customer</strong>
+      <span>Username: client001</span>
+      <span>Password: 123456</span>
+    </article>
+    <article class="role-card">
+      <strong>Staff</strong>
+      <span>Username: staff001</span>
+      <span>Password: staff123</span>
+    </article>
+    <article class="role-card">
+      <strong>Admin</strong>
+      <span>Username: admin001</span>
+      <span>Password: admin123</span>
+    </article>
   `;
 }
 
@@ -29,11 +41,13 @@ if (form && statusElement) {
     const result = await window.storefrontState.signInWithApi(username, password);
     if (!result.ok) {
       statusElement.textContent = result.error;
+      statusElement.dataset.state = "error";
       return;
     }
 
     const name = result.session.displayName || result.session.customerName || result.session.username;
     statusElement.textContent = `Signed in as ${name} (${result.session.role}).`;
+    statusElement.dataset.state = "success";
     window.location.href = targetPathForRole(result.session.role);
   });
 }

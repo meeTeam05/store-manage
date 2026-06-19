@@ -194,17 +194,91 @@ h3 {
 .login-shell {
   min-height: 100vh;
   display: grid;
-  place-items: center;
+  align-items: center;
   padding: 120px 24px 40px;
+  background:
+    linear-gradient(135deg, rgba(24, 22, 20, 0.06), rgba(24, 22, 20, 0)),
+    linear-gradient(180deg, #f4efe8 0%, #efe6dc 100%);
+}
+
+.login-stage {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(380px, 460px);
+  gap: 28px;
+  align-items: stretch;
+}
+
+.login-intro,
+.login-panel {
+  border: 1px solid #ded5cc;
+  border-radius: 10px;
+  background: rgba(255, 253, 250, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.login-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 42px;
+}
+
+.login-intro h1,
+.login-panel h2 {
+  margin: 10px 0 0;
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.login-intro h1 {
+  max-width: 10ch;
+  font-size: clamp(44px, 6vw, 72px);
+}
+
+.login-lead {
+  max-width: 520px;
+  margin: 20px 0 0;
+  color: #4f4944;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.login-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.login-notes div {
+  padding: 18px;
+  border: 1px solid #e8ddd1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.login-note-label {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8b8178;
+}
+
+.login-notes p {
+  margin: 0;
+  color: #3f3a35;
+  line-height: 1.7;
 }
 
 .login-panel {
   width: min(100%, 460px);
+  justify-self: end;
   padding: 36px;
-  border: 1px solid #ded5cc;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(6px);
 }
 
 .login-form {
@@ -233,12 +307,21 @@ h3 {
   margin-top: 16px;
 }
 
+.status[data-state="error"] {
+  color: #8a2f2a;
+}
+
+.status[data-state="success"] {
+  color: #255c3a;
+}
+
 .catalog-body .site-header {
   color: #181614;
 }
 
 .product-shell,
-.cart-shell {
+.cart-shell,
+.payment-shell {
   padding: 120px 36px 56px;
 }
 
@@ -320,8 +403,15 @@ h3 {
   gap: 28px;
 }
 
+.payment-layout {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 28px;
+}
+
 .cart-item,
-.cart-summary {
+.cart-summary,
+.payment-card {
   border: 1px solid #ded5cc;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
@@ -372,6 +462,116 @@ h3 {
   align-self: start;
 }
 
+.payment-card {
+  padding: 28px;
+}
+
+.payment-card h1 {
+  margin: 10px 0 0;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1;
+}
+
+.payment-lead {
+  margin: 16px 0 0;
+  color: #5c544e;
+  line-height: 1.8;
+}
+
+.payment-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.payment-option-list {
+  display: grid;
+  gap: 12px;
+}
+
+.payment-option {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  border: 1px solid #e5dbd0;
+  border-radius: 8px;
+  background: #fffdfa;
+}
+
+.payment-option input {
+  margin-top: 3px;
+}
+
+.payment-option strong,
+.summary-card-title {
+  color: #181614;
+}
+
+.payment-option span,
+.payment-option p,
+.info-grid p {
+  margin: 0;
+  color: #5c544e;
+  line-height: 1.7;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.info-grid article {
+  padding: 16px;
+  border: 1px solid #ede3d9;
+  border-radius: 8px;
+  background: #fffdfa;
+}
+
+.info-grid span {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8b8178;
+}
+
+.summary-card-title {
+  margin: 0 0 18px;
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.payment-items {
+  display: grid;
+  gap: 12px;
+}
+
+.payment-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid #ede3d9;
+}
+
+.payment-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.payment-item p {
+  margin: 0;
+}
+
+.payment-meta {
+  color: #5c544e;
+}
+
 .summary-row {
   display: flex;
   justify-content: space-between;
@@ -392,15 +592,25 @@ h3 {
 
 .role-hints {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   margin-top: 18px;
+}
+
+.role-card {
+  display: grid;
+  gap: 4px;
   padding: 14px;
   border: 1px solid #ede3d9;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fffdfa;
   color: #5c544e;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.role-card strong {
+  color: #181614;
+  font-size: 14px;
 }
 
 .dashboard-shell {
@@ -470,8 +680,26 @@ h3 {
   .feature-row,
   .dashboard-grid,
   .editorial,
+  .login-stage,
   .product-layout,
   .cart-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .login-intro,
+  .login-panel {
+    padding: 24px;
+  }
+
+  .login-panel {
+    justify-self: stretch;
+  }
+
+  .login-intro h1 {
+    max-width: none;
+  }
+
+  .login-notes {
     grid-template-columns: 1fr;
   }
 
@@ -482,8 +710,13 @@ h3 {
 
   .product-shell,
   .cart-shell,
+  .payment-shell,
   .dashboard-shell {
     padding: 100px 20px 40px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
   }
 
   .product-detail {
