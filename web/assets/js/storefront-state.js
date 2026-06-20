@@ -187,7 +187,7 @@
     const subtotalMinor = items.reduce((sum, item) => sum + item.lineTotalMinor, 0);
     const voucher = window.storefrontData.voucher;
     let discountMinor = 0;
-    if (subtotalMinor >= voucher.minOrderMinor) {
+    if (voucher && subtotalMinor >= voucher.minOrderMinor) {
       discountMinor = Math.min(Math.round(subtotalMinor * voucher.rate), voucher.maxDiscountMinor);
     }
     return {

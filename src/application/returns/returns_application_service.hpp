@@ -14,6 +14,7 @@ using fashion_store::domain::returns::IReturnRepository;
 using fashion_store::domain::returns::ReturnEligibilityError;
 using fashion_store::domain::returns::ReturnPolicy;
 using fashion_store::domain::returns::ReturnRequest;
+using fashion_store::domain::returns::ReturnStatus;
 using fashion_store::domain::shared::OrderId;
 using fashion_store::domain::shared::OrderItemId;
 using fashion_store::domain::shared::Result;
@@ -50,7 +51,9 @@ public:
 
         int existing_requested_quantity = 0;
         for (const auto& existing_request : return_repository_.find_by_order_id(order_id)) {
-            if (existing_request.order_item_id() == order_item_id) {
+            if (existing_request.order_item_id() == order_item_id &&
+                existing_request.status() != ReturnStatus::Rejected &&
+                existing_request.status() != ReturnStatus::Closed) {
                 existing_requested_quantity += existing_request.quantity();
             }
         }

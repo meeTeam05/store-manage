@@ -42,7 +42,7 @@ Order Order::rehydrate(OrderId id,
 Money Order::subtotal() const noexcept {
     auto total = Money::from_minor(0);
     for (const auto& item : items_) {
-        total = total + item.unit_price.multiply(item.quantity);
+        total = total + item.line_total();
     }
     return total;
 }
@@ -52,6 +52,9 @@ Money Order::total() const noexcept {
 }
 
 Status<OrderError> Order::apply_discount(Money discount, std::optional<std::string> voucher_code) {
+    if (status_ != OrderStatus::Draft) {
+        return Status<OrderError>::fail(OrderError::InvalidStateTransition);
+    }
     if (discount < Money::from_minor(0) || discount > subtotal()) {
         return Status<OrderError>::fail(OrderError::InvalidDiscount);
     }

@@ -53,12 +53,19 @@
       ? await window.storefrontApi.checkout({ method: paymentMethod })
       : { ok: false, error: "API unavailable" };
 
-    window.storefrontState.clearCart();
-    statusElement.dataset.state = "success";
+    const isRealError = !response.ok && response.error !== "API unavailable";
+    if (!isRealError) {
+      window.storefrontState.clearCart();
+    }
+    statusElement.dataset.state = isRealError ? "error" : "success";
     statusElement.textContent = response.ok
       ? `Order placed with ${paymentMethod}.`
-      : `Local order placed with ${paymentMethod}. Backend checkout is not connected yet.`;
-    form.querySelector("button[type='submit']").disabled = true;
-    form.querySelector("button[type='submit']").textContent = "Order Submitted";
+      : isRealError
+        ? `Checkout failed: ${response.error}`
+        : `Local order placed with ${paymentMethod}. Backend checkout is not connected yet.`;
+    if (!isRealError) {
+      form.querySelector("button[type='submit']").disabled = true;
+      form.querySelector("button[type='submit']").textContent = "Order Submitted";
+    }
   });
 })();
