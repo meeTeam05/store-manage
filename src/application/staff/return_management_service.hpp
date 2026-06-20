@@ -97,8 +97,8 @@ public:
             return Result<ReturnRequest, ReturnManagementError>::fail(ReturnManagementError::ReturnRuleViolation);
         }
 
-        inventory_repository_.save(*inventory_item);
         return_repository_.save(updated_request);
+        inventory_repository_.save(*inventory_item);
         return Result<ReturnRequest, ReturnManagementError>::ok(updated_request);
     }
 

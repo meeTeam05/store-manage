@@ -38,6 +38,10 @@ void write_all_lines(const std::filesystem::path& path, const std::vector<std::s
     for (const auto& line : lines) {
         output << line << '\n';
     }
+    output.flush();
+    if (!output) {
+        throw std::runtime_error("failed to write persistence file: " + path.string());
+    }
 }
 
 }  // namespace fashion_store::infrastructure::persistence::file
