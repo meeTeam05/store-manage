@@ -57,6 +57,7 @@
 - API facade exposes sign-in, catalog search, cart, and checkout use cases for future HTTP adapters
 - `src/main.cpp` seeds sample data and runs one purchase flow
 - `web/` contains linked storefront pages for login, catalog, cart, and payment backed by shared demo state with API-client fallback support
+- The local web shell uses a black-and-white visual system while keeping product/editorial images in original color
 - Fallback Windows build and smoke-test scripts exist under `scripts/`
 
 ## Next Recommended Work
