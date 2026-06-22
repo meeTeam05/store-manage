@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260620">
 </head>
 <body class="catalog-body">
   <header class="site-header">
@@ -58,6 +58,16 @@
           <button class="button primary full-width" type="submit">Place Local Test Order</button>
           <p id="payment-status" class="status" aria-live="polite"></p>
         </form>
+
+        <section id="payment-confirmation" class="confirmation-block" hidden>
+          <p class="summary-card-title">Local Order Created</p>
+          <div id="confirmation-info" class="info-grid"></div>
+          <div id="confirmation-items" class="payment-items"></div>
+          <div class="confirmation-actions">
+            <a class="button primary" href="orders.html">View Orders</a>
+            <a class="button" href="product.html">Continue Shopping</a>
+          </div>
+        </section>
       </section>
 
       <aside class="payment-card">
@@ -75,6 +85,10 @@
           <span>Total</span>
           <span id="payment-total">0 VND</span>
         </div>
+        <section id="recent-orders-shell" class="recent-orders-shell" hidden>
+          <p class="summary-card-title">Recent Local Orders</p>
+          <div id="recent-orders"></div>
+        </section>
       </aside>
     </section>
   </main>
@@ -82,6 +96,7 @@
   <script src="storefront-data.js"></script>
   <script src="api-client.js"></script>
   <script src="storefront-state.js"></script>
+  <script src="session-shell.js"></script>
   <script src="payment.js"></script>
 </body>
 </html>

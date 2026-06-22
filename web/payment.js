@@ -1,12 +1,22 @@
 (function renderPaymentPage() {
+  function isCustomerRole(role) {
+    return role === "Customer" || role === 0;
+  }
+
   const session = window.storefrontState.getSession();
   if (!session) {
-    window.location.href = "login.html";
+    window.location.href = "login.html?returnTo=payment.html";
+    return;
+  }
+
+  if (!isCustomerRole(session.role)) {
+    window.location.href = "login.html?returnTo=payment.html";
     return;
   }
 
   const summary = window.storefrontState.buildCartSummary();
-  if (summary.items.length === 0) {
+  const existingOrders = window.storefrontState.getCustomerOrders();
+  if (summary.items.length === 0 && existingOrders.length === 0) {
     window.location.href = "cart.html";
     return;
   }
@@ -19,6 +29,60 @@
   const totalElement = document.getElementById("payment-total");
   const form = document.getElementById("payment-form");
   const statusElement = document.getElementById("payment-status");
+  const confirmationBlock = document.getElementById("payment-confirmation");
+  const confirmationInfo = document.getElementById("confirmation-info");
+  const confirmationItems = document.getElementById("confirmation-items");
+  const recentOrdersShell = document.getElementById("recent-orders-shell");
+  const recentOrders = document.getElementById("recent-orders");
+
+  function renderRecentOrders() {
+    const orders = window.storefrontState.getCustomerOrders().slice(0, 3);
+    if (orders.length === 0) {
+      recentOrdersShell.hidden = true;
+      return;
+    }
+
+    recentOrdersShell.hidden = false;
+    recentOrders.innerHTML = orders.map((order) => `
+      <article class="recent-order-card">
+        <p><strong>${order.orderNumber}</strong></p>
+        <p class="payment-meta">${order.paymentMethod} / ${order.orderStatus} / ${order.shippingStatus}</p>
+        <p class="payment-meta">${window.storefrontState.formatMoney(order.totalMinor)}</p>
+      </article>
+    `).join("");
+  }
+
+  function renderConfirmation(order, backendMessage) {
+    confirmationBlock.hidden = false;
+    confirmationInfo.innerHTML = `
+      <article>
+        <span>Order</span>
+        <p>${order.orderNumber}</p>
+      </article>
+      <article>
+        <span>Tracking</span>
+        <p>${order.trackingCode}</p>
+      </article>
+      <article>
+        <span>Payment</span>
+        <p>${order.paymentMethod} / ${order.paymentStatus}</p>
+      </article>
+      <article>
+        <span>Backend</span>
+        <p>${backendMessage}</p>
+      </article>
+    `;
+
+    confirmationItems.innerHTML = order.items.map((item) => `
+      <article class="payment-item">
+        <div>
+          <p><strong>${item.productName}</strong></p>
+          <p class="payment-meta">${item.color} / Size ${item.size} / Qty ${item.quantity}</p>
+        </div>
+        <p>${window.storefrontState.formatMoney(item.lineTotalMinor)}</p>
+      </article>
+    `).join("");
+  }
 
   infoContainer.innerHTML = `
     <article>
@@ -30,6 +94,21 @@
       <p>${customer ? `${customer.phone}, ${customer.city}` : "Local test profile"}</p>
     </article>
   `;
+
+  if (summary.items.length === 0) {
+    form.hidden = true;
+    itemsContainer.innerHTML = `
+      <article class="recent-order-card">
+        <p><strong>No active cart items.</strong></p>
+        <p class="payment-meta">Your latest local orders are shown below. Add a product to create another test order.</p>
+      </article>
+    `;
+    subtotalElement.textContent = window.storefrontState.formatMoney(0);
+    discountElement.textContent = `- ${window.storefrontState.formatMoney(0)}`;
+    totalElement.textContent = window.storefrontState.formatMoney(0);
+    renderRecentOrders();
+    return;
+  }
 
   itemsContainer.innerHTML = summary.items.map((item) => `
     <article class="payment-item">
@@ -44,21 +123,33 @@
   subtotalElement.textContent = window.storefrontState.formatMoney(summary.subtotalMinor);
   discountElement.textContent = `- ${window.storefrontState.formatMoney(summary.discountMinor)}`;
   totalElement.textContent = window.storefrontState.formatMoney(summary.totalMinor);
+  renderRecentOrders();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(form);
     const paymentMethod = String(formData.get("payment-method") || "Cash");
-    const response = window.storefrontApi
-      ? await window.storefrontApi.checkout({ method: paymentMethod })
-      : { ok: false, error: "API unavailable" };
+    const submitButton = form.querySelector("button[type='submit']");
+    submitButton.disabled = true;
+    submitButton.textContent = "Submitting...";
 
-    window.storefrontState.clearCart();
+    const result = await window.storefrontState.placeOrder(paymentMethod);
+    if (!result.ok) {
+      statusElement.dataset.state = "error";
+      statusElement.textContent = result.error;
+      submitButton.disabled = false;
+      submitButton.textContent = "Place Local Test Order";
+      return;
+    }
+
     statusElement.dataset.state = "success";
-    statusElement.textContent = response.ok
-      ? `Order placed with ${paymentMethod}.`
-      : `Local order placed with ${paymentMethod}. Backend checkout is not connected yet.`;
-    form.querySelector("button[type='submit']").disabled = true;
-    form.querySelector("button[type='submit']").textContent = "Order Submitted";
+    statusElement.textContent = `${result.order.orderNumber} created with ${paymentMethod}.`;
+    submitButton.textContent = "Order Submitted";
+    renderConfirmation(result.order, result.backendMessage);
+    renderRecentOrders();
+    itemsContainer.innerHTML = "";
+    subtotalElement.textContent = window.storefrontState.formatMoney(0);
+    discountElement.textContent = `- ${window.storefrontState.formatMoney(0)}`;
+    totalElement.textContent = window.storefrontState.formatMoney(0);
   });
 })();

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Store Manage | Cart</title>
+  <title>Store Manage | My Orders</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,42 +15,35 @@
     <nav class="nav">
       <a href="index.html">Home</a>
       <a href="product.html">Product</a>
+      <a href="cart.html">Cart</a>
       <a href="login.html" data-auth-link>Sign In</a>
     </nav>
   </header>
 
-  <main class="cart-shell">
-    <section class="cart-layout">
-      <div class="cart-items">
-        <p class="eyebrow">Cart</p>
-        <h1>Your Selection</h1>
-        <p id="cart-empty-state" class="status" hidden>Your cart is empty.</p>
-        <div id="cart-items-list"></div>
-      </div>
-
-      <aside class="cart-summary">
-        <p class="eyebrow">Order Summary</p>
-        <div class="summary-row">
-          <span>Subtotal</span>
-          <span id="summary-subtotal">0 VND</span>
-        </div>
-        <div class="summary-row">
-          <span>Voucher</span>
-          <span id="summary-discount">0 VND</span>
-        </div>
-        <div class="summary-row total">
-          <span>Total</span>
-          <span id="summary-total">0 VND</span>
-        </div>
-        <a id="checkout-link" class="button primary full-width" href="login.html">Continue To Payment</a>
-      </aside>
+  <main class="orders-shell">
+    <section class="dashboard-heading">
+      <p class="eyebrow">Customer Orders</p>
+      <h1>My Local Orders</h1>
+      <p id="orders-session" class="status"></p>
+      <p class="orders-note">This history lasts only for the current browser session and resets when a new session starts.</p>
     </section>
+
+    <section id="orders-empty" class="payment-card" hidden>
+      <p class="summary-card-title">No Orders Yet</p>
+      <p class="payment-meta">Place a local test order from the payment page and it will appear here.</p>
+      <div class="confirmation-actions">
+        <a class="button primary" href="product.html">Browse Product</a>
+        <a class="button" href="cart.html">Open Cart</a>
+      </div>
+    </section>
+
+    <section id="orders-list" class="orders-list"></section>
   </main>
 
   <script src="storefront-data.js"></script>
   <script src="api-client.js"></script>
   <script src="storefront-state.js"></script>
   <script src="session-shell.js"></script>
-  <script src="cart.js"></script>
+  <script src="orders.js"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260620">
 </head>
 <body>
   <header class="site-header">
@@ -18,7 +18,7 @@
       <a href="#essentials">Essentials</a>
       <a href="product.html">Product</a>
       <a href="cart.html">Cart</a>
-      <a href="login.html">Sign In</a>
+      <a href="login.html" data-auth-link>Sign In</a>
     </nav>
   </header>
 
@@ -103,5 +103,9 @@
       </div>
     </section>
   </main>
+  <script src="storefront-data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="storefront-state.js"></script>
+  <script src="session-shell.js"></script>
 </body>
 </html>
