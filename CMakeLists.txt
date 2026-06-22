@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_package(Threads REQUIRED)
+
 enable_testing()
 
 add_library(fashion_store_core
@@ -25,7 +27,7 @@ add_executable(fashion_store
     src/main.cpp
 )
 
-target_link_libraries(fashion_store PRIVATE fashion_store_core)
+target_link_libraries(fashion_store PRIVATE fashion_store_core Threads::Threads)
 
 add_executable(fashion_store_core_smoke
     tests/core_smoke.cpp

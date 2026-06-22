@@ -379,7 +379,8 @@ private:
         CancellationPlan plan;
         const auto status_before_cancel = order.status();
 
-        if (status_before_cancel == OrderStatus::AwaitingPayment) {
+        if (status_before_cancel == OrderStatus::Draft ||
+            status_before_cancel == OrderStatus::AwaitingPayment) {
             for (const auto& item : order.items()) {
                 auto inventory_item = load_inventory_item(item.variant_id);
                 if (!inventory_item) {

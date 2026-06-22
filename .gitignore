@@ -1,4 +1,6 @@
 .agents/
+.claude/
+.mnhat/
 build/
 build-gpp/
 *.obj
