@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260620">
 </head>
 <body class="catalog-body">
   <header class="site-header">
@@ -15,7 +15,7 @@
     <nav class="nav">
       <a href="index.html">Storefront</a>
       <a href="cart.html">Cart</a>
-      <a href="login.html">Switch Account</a>
+      <a href="login.html" data-auth-link>Switch Account</a>
     </nav>
   </header>
 
@@ -43,12 +43,34 @@
         <p>Approve, reject, restock, refund, and close return requests.</p>
       </article>
     </section>
+
+    <section class="staff-workbench">
+      <article class="payment-card">
+        <p class="summary-card-title">Order Control</p>
+        <p class="payment-meta">Manage local demo orders inside the current browser session.</p>
+        <div id="staff-order-metrics" class="info-grid order-history-grid"></div>
+      </article>
+
+      <section class="payment-card">
+        <div class="staff-toolbar">
+          <div>
+            <p class="summary-card-title">Local Order Queue</p>
+            <p class="payment-meta">Update payment, packing, shipping, delivery, and completion states.</p>
+          </div>
+          <div id="staff-order-filters" class="chip-row staff-filter-row"></div>
+        </div>
+        <p id="staff-order-feedback" class="status" aria-live="polite"></p>
+        <p id="staff-order-empty" class="payment-meta" hidden>No local orders yet. Place a customer test order first.</p>
+        <div id="staff-order-list" class="staff-order-list"></div>
+      </section>
+    </section>
   </main>
 
   <script src="assets/js/storefront-data.js"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/api-client.js"></script>
   <script src="assets/js/storefront-state.js"></script>
+  <script src="session-shell.js"></script>
   <script src="assets/js/staff.js"></script>
 </body>
 </html>

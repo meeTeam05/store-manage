@@ -58,8 +58,10 @@ powershell -ExecutionPolicy Bypass -File scripts/test-gpp.ps1
 - `web/cart.html`: cart shell
 - `web/login.html`: login shell
 - `web/payment.html`: local payment step before order submission
+- Visual direction: monochrome black-and-white UI with original-color product/editorial imagery
 
 Open these files directly in a browser for the current static front-end preview.
+If a browser keeps an older stylesheet cached, refresh with `Ctrl + F5`.
 
 ## Current Status
 
@@ -90,3 +92,4 @@ Open these files directly in a browser for the current static front-end preview.
 - API facade for sign-in, catalog search, cart, and checkout flows
 - web login, product, cart, and payment pages share local demo state
 - web API client can call backend endpoints and falls back to demo state when the API is unavailable
+- web storefront uses a dark monochrome shell so the C++ flow demo stays visually consistent across catalog, cart, and payment

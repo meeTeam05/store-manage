@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Store Manage | Product</title>
+  <title>Store Manage | My Orders</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,40 +14,30 @@
     <a class="brand" href="index.html">Store Manage</a>
     <nav class="nav">
       <a href="index.html">Home</a>
+      <a href="product.html">Product</a>
       <a href="cart.html">Cart</a>
       <a href="login.html" data-auth-link>Sign In</a>
     </nav>
   </header>
 
-  <main class="product-shell">
-    <section class="product-layout">
-      <div id="product-gallery" class="product-gallery">
-      </div>
-      <div class="product-detail">
-        <p id="product-category" class="eyebrow">Outerwear</p>
-        <h1 id="product-title">Structured Coat</h1>
-        <p id="product-price" class="price">4.900.000 VND</p>
-        <p id="product-description" class="description"></p>
+  <main class="orders-shell">
+    <section class="dashboard-heading">
+      <p class="eyebrow">Customer Orders</p>
+      <h1>My Local Orders</h1>
+      <p id="orders-session" class="status"></p>
+      <p class="orders-note">This history lasts only for the current browser session and resets when a new session starts.</p>
+    </section>
 
-        <div class="option-group">
-          <span>Size</span>
-          <div id="size-row" class="chip-row">
-          </div>
-        </div>
-
-        <div class="option-group">
-          <span>Color</span>
-          <div id="color-row" class="chip-row">
-          </div>
-        </div>
-
-        <div class="product-actions">
-          <button id="add-to-cart" class="button primary" type="button">Add To Cart</button>
-          <a id="wishlist-link" class="button" href="login.html">Save To Wishlist</a>
-        </div>
-        <p id="product-status" class="status"></p>
+    <section id="orders-empty" class="payment-card" hidden>
+      <p class="summary-card-title">No Orders Yet</p>
+      <p class="payment-meta">Place a local test order from the payment page and it will appear here.</p>
+      <div class="confirmation-actions">
+        <a class="button primary" href="product.html">Browse Product</a>
+        <a class="button" href="cart.html">Open Cart</a>
       </div>
     </section>
+
+    <section id="orders-list" class="orders-list"></section>
   </main>
 
   <script src="assets/js/storefront-data.js"></script>
@@ -55,6 +45,6 @@
   <script src="assets/js/api-client.js"></script>
   <script src="assets/js/storefront-state.js"></script>
   <script src="session-shell.js"></script>
-  <script src="assets/js/product.js"></script>
+  <script src="orders.js"></script>
 </body>
 </html>

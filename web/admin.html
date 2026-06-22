@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260620">
 </head>
 <body class="catalog-body">
   <header class="site-header">
@@ -15,7 +15,7 @@
     <nav class="nav">
       <a href="index.html">Storefront</a>
       <a href="staff.html">Staff</a>
-      <a href="login.html">Switch Account</a>
+      <a href="login.html" data-auth-link>Switch Account</a>
     </nav>
   </header>
 
@@ -24,6 +24,7 @@
       <p class="eyebrow">Admin Console</p>
       <h1>System Management</h1>
       <p id="admin-session" class="status"></p>
+      <p id="admin-feedback" class="status" aria-live="polite"></p>
     </section>
 
     <section class="dashboard-grid">
@@ -43,12 +44,52 @@
         <p>Review revenue, best-selling products, and low-stock inventory summaries.</p>
       </article>
     </section>
+
+    <section class="admin-workbench">
+      <article class="payment-card">
+        <p class="summary-card-title">Overview</p>
+        <div id="admin-overview-metrics" class="info-grid order-history-grid"></div>
+      </article>
+
+      <div class="admin-stack">
+        <section class="payment-card admin-section">
+          <div class="admin-toolbar">
+            <div>
+              <p class="summary-card-title">Catalog Manager</p>
+              <p class="payment-meta">Update product identity, pricing, sell status, and per-variant stock for this local session.</p>
+            </div>
+          </div>
+          <div id="admin-product-list" class="admin-product-list"></div>
+        </section>
+
+        <section class="payment-card admin-section">
+          <div class="admin-toolbar">
+            <div>
+              <p class="summary-card-title">Promotion Manager</p>
+              <p class="payment-meta">Adjust voucher code, discount rate, thresholds, and local activation state.</p>
+            </div>
+          </div>
+          <div id="admin-voucher-editor"></div>
+        </section>
+
+        <section class="payment-card admin-section">
+          <div class="admin-toolbar">
+            <div>
+              <p class="summary-card-title">Reports</p>
+              <p class="payment-meta">Monitor revenue, best-selling products, low-stock variants, and the latest local orders.</p>
+            </div>
+          </div>
+          <div id="admin-report-body" class="admin-report-body"></div>
+        </section>
+      </div>
+    </section>
   </main>
 
   <script src="assets/js/storefront-data.js"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/api-client.js"></script>
   <script src="assets/js/storefront-state.js"></script>
+  <script src="session-shell.js"></script>
   <script src="assets/js/admin.js"></script>
 </body>
 </html>

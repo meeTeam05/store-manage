@@ -1,4 +1,8 @@
 (function renderCartPage() {
+  function isCustomerRole(role) {
+    return role === "Customer" || role === 0;
+  }
+
   const cartItemsContainer = document.getElementById("cart-items-list");
   const subtotalElement = document.getElementById("summary-subtotal");
   const discountElement = document.getElementById("summary-discount");
@@ -8,6 +12,7 @@
 
   function render() {
     const summary = window.storefrontState.buildCartSummary();
+    const session = window.storefrontState.getSession();
 
     if (summary.items.length === 0) {
       cartItemsContainer.innerHTML = "";
@@ -55,9 +60,26 @@
       });
     });
 
-    const session = window.storefrontState.getSession();
-    checkoutButton.textContent = session ? "Continue To Payment" : "Sign In To Continue";
-    checkoutButton.href = session ? "payment.html" : "login.html";
+    if (summary.items.length === 0) {
+      checkoutButton.textContent = "Add Product First";
+      checkoutButton.href = "product.html";
+      return;
+    }
+
+    if (!session) {
+      checkoutButton.textContent = "Sign In To Continue";
+      checkoutButton.href = "login.html?returnTo=payment.html";
+      return;
+    }
+
+    if (!isCustomerRole(session.role)) {
+      checkoutButton.textContent = "Use Customer Account";
+      checkoutButton.href = "login.html?returnTo=payment.html";
+      return;
+    }
+
+    checkoutButton.textContent = "Continue To Payment";
+    checkoutButton.href = "payment.html";
   }
 
   render();

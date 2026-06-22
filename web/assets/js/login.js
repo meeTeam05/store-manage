@@ -32,6 +32,17 @@ function targetPathForRole(role) {
   return "cart.html";
 }
 
+function requestedReturnPath() {
+  const params = new URLSearchParams(window.location.search);
+  const returnTo = params.get("returnTo");
+  const allowedTargets = new Set(["index.html", "product.html", "cart.html", "payment.html", "orders.html"]);
+  return allowedTargets.has(String(returnTo)) ? String(returnTo) : null;
+}
+
+function isCustomerRole(role) {
+  return role === "Customer" || role === 0;
+}
+
 if (form && statusElement) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -48,6 +59,11 @@ if (form && statusElement) {
     const name = result.session.displayName || result.session.customerName || result.session.username;
     statusElement.textContent = `Signed in as ${name} (${result.session.role}).`;
     statusElement.dataset.state = "success";
+    const returnTo = requestedReturnPath();
+    if (returnTo && isCustomerRole(result.session.role)) {
+      window.location.href = returnTo;
+      return;
+    }
     window.location.href = targetPathForRole(result.session.role);
   });
 }
