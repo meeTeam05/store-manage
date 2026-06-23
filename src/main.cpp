@@ -1,5 +1,6 @@
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <optional>
 
@@ -65,6 +66,19 @@ int main() {
 
     const auto data_dir = resolve_project_path("data");
     std::filesystem::create_directories(data_dir);
+    const auto product_storefront_path = data_dir / "product_storefront.json";
+
+    if (!std::filesystem::exists(product_storefront_path) ||
+        std::filesystem::is_empty(product_storefront_path)) {
+        std::ofstream storefront_seed(product_storefront_path, std::ios::trunc);
+        storefront_seed
+            << "{\n"
+            << "  \"product-001\": [\n"
+            << "    \"https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80\",\n"
+            << "    \"https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80\"\n"
+            << "  ]\n"
+            << "}\n";
+    }
 
     FileProductRepository product_repository(data_dir / "products.txt");
     FileCustomerRepository customer_repository(data_dir / "customers.txt");
@@ -282,7 +296,8 @@ int main() {
         store_mgmt_svc,
         payment_svc,
         shipping_svc,
-        report_svc);
+        report_svc,
+        product_storefront_path);
 
     std::cout << "listening on port 8080\n";
     std::cout.flush();

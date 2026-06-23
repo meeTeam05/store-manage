@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -85,6 +87,228 @@ static std::string ok_json(const std::string& data) {
 
 static std::string err_json(const std::string& msg) {
     return "{\"ok\":false,\"error\":" + j_str(msg) + "}";
+}
+
+struct ProductStorefrontMetadata {
+    std::map<std::string, std::vector<std::string>> images_by_product;
+};
+
+static void skip_json_ws(const std::string& source, std::size_t& position) {
+    while (position < source.size() &&
+           std::isspace(static_cast<unsigned char>(source[position]))) {
+        ++position;
+    }
+}
+
+static std::optional<std::string> parse_json_string_token(
+    const std::string& source,
+    std::size_t& position) {
+    skip_json_ws(source, position);
+    if (position >= source.size() || source[position] != '"') {
+        return std::nullopt;
+    }
+    ++position;
+
+    std::string value;
+    while (position < source.size()) {
+        const char current = source[position++];
+        if (current == '"') {
+            return value;
+        }
+        if (current != '\\') {
+            value.push_back(current);
+            continue;
+        }
+        if (position >= source.size()) {
+            return std::nullopt;
+        }
+        const char escaped = source[position++];
+        switch (escaped) {
+            case '"': value.push_back('"'); break;
+            case '\\': value.push_back('\\'); break;
+            case '/': value.push_back('/'); break;
+            case 'n': value.push_back('\n'); break;
+            case 'r': value.push_back('\r'); break;
+            case 't': value.push_back('\t'); break;
+            default: value.push_back(escaped); break;
+        }
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> parse_json_string_array(
+    const std::string& source,
+    std::size_t& position) {
+    skip_json_ws(source, position);
+    if (position >= source.size() || source[position] != '[') {
+        return std::nullopt;
+    }
+    ++position;
+
+    std::vector<std::string> values;
+    while (true) {
+        skip_json_ws(source, position);
+        if (position >= source.size()) {
+            return std::nullopt;
+        }
+        if (source[position] == ']') {
+            ++position;
+            return values;
+        }
+
+        auto value = parse_json_string_token(source, position);
+        if (!value.has_value()) {
+            return std::nullopt;
+        }
+        values.push_back(*value);
+
+        skip_json_ws(source, position);
+        if (position >= source.size()) {
+            return std::nullopt;
+        }
+        if (source[position] == ',') {
+            ++position;
+            continue;
+        }
+        if (source[position] == ']') {
+            ++position;
+            return values;
+        }
+        return std::nullopt;
+    }
+}
+
+static ProductStorefrontMetadata load_product_storefront_metadata(
+    const std::filesystem::path& path) {
+    ProductStorefrontMetadata metadata;
+    std::ifstream input(path);
+    if (!input.is_open()) {
+        return metadata;
+    }
+
+    const std::string content{
+        std::istreambuf_iterator<char>(input),
+        std::istreambuf_iterator<char>()};
+    if (content.empty()) {
+        return metadata;
+    }
+
+    std::size_t position = 0;
+    skip_json_ws(content, position);
+    if (position >= content.size() || content[position] != '{') {
+        return metadata;
+    }
+    ++position;
+
+    while (true) {
+        skip_json_ws(content, position);
+        if (position >= content.size()) {
+            return ProductStorefrontMetadata{};
+        }
+        if (content[position] == '}') {
+            return metadata;
+        }
+
+        auto product_id = parse_json_string_token(content, position);
+        if (!product_id.has_value()) {
+            return ProductStorefrontMetadata{};
+        }
+
+        skip_json_ws(content, position);
+        if (position >= content.size() || content[position] != ':') {
+            return ProductStorefrontMetadata{};
+        }
+        ++position;
+
+        auto images = parse_json_string_array(content, position);
+        if (!images.has_value()) {
+            return ProductStorefrontMetadata{};
+        }
+        metadata.images_by_product[*product_id] = std::move(*images);
+
+        skip_json_ws(content, position);
+        if (position >= content.size()) {
+            return ProductStorefrontMetadata{};
+        }
+        if (content[position] == ',') {
+            ++position;
+            continue;
+        }
+        if (content[position] == '}') {
+            return metadata;
+        }
+        return ProductStorefrontMetadata{};
+    }
+}
+
+static void save_product_storefront_metadata(
+    const std::filesystem::path& path,
+    const ProductStorefrontMetadata& metadata) {
+    if (path.has_parent_path()) {
+        std::filesystem::create_directories(path.parent_path());
+    }
+
+    std::ofstream output(path, std::ios::trunc);
+    output << "{\n";
+    bool first_product = true;
+    for (const auto& [product_id, images] : metadata.images_by_product) {
+        if (!first_product) {
+            output << ",\n";
+        }
+        output << "  " << j_str(product_id) << ": [";
+        for (std::size_t index = 0; index < images.size(); ++index) {
+            output << (index == 0 ? "\n" : ",\n");
+            output << "    " << j_str(images[index]);
+        }
+        if (!images.empty()) {
+            output << '\n' << "  ";
+        }
+        output << "]";
+        first_product = false;
+    }
+    if (!metadata.images_by_product.empty()) {
+        output << '\n';
+    }
+    output << "}\n";
+}
+
+static std::string trim_copy(std::string value) {
+    while (!value.empty() &&
+           std::isspace(static_cast<unsigned char>(value.front()))) {
+        value.erase(value.begin());
+    }
+    while (!value.empty() &&
+           std::isspace(static_cast<unsigned char>(value.back()))) {
+        value.pop_back();
+    }
+    return value;
+}
+
+static std::vector<std::string> parse_image_urls_text(const std::string& text) {
+    std::string normalized = text;
+    for (std::size_t position = 0; (position = normalized.find("\\r\\n", position)) != std::string::npos;) {
+        normalized.replace(position, 4, "\n");
+    }
+    for (std::size_t position = 0; (position = normalized.find("\\n", position)) != std::string::npos;) {
+        normalized.replace(position, 2, "\n");
+    }
+    for (std::size_t position = 0; (position = normalized.find("\\r", position)) != std::string::npos;) {
+        normalized.replace(position, 2, "\n");
+    }
+
+    std::vector<std::string> images;
+    std::istringstream input(normalized);
+    std::string line;
+    while (std::getline(input, line)) {
+        auto cleaned = trim_copy(line);
+        if (cleaned.empty()) {
+            continue;
+        }
+        if (std::find(images.begin(), images.end(), cleaned) == images.end()) {
+            images.push_back(cleaned);
+        }
+    }
+    return images;
 }
 
 // ── Simple flat JSON body parser ──────────────────────────────────────────────
@@ -274,7 +498,9 @@ static std::string shipstatus_str(ShippingStatus s) {
 
 // ── Domain serializers ────────────────────────────────────────────────────────
 
-static std::string ser_product(const Product& p) {
+static std::string ser_product(
+    const Product& p,
+    const std::vector<std::string>& images = {}) {
     std::vector<std::string> vars;
     for (const auto& v : p.variants()) {
         vars.push_back(j_obj({
@@ -286,6 +512,10 @@ static std::string ser_product(const Product& p) {
             {"active",       j_bool(v.active)}
         }));
     }
+    std::vector<std::string> image_items;
+    for (const auto& image : images) {
+        image_items.push_back(j_str(image));
+    }
     return j_obj({
         {"product_id",   j_str(p.id().value)},
         {"name",         j_str(p.name())},
@@ -293,6 +523,7 @@ static std::string ser_product(const Product& p) {
         {"description",  j_str(p.description())},
         {"collection",   j_str(p.collection())},
         {"status",       j_str(pstatus_str(p.status()))},
+        {"images",       j_arr(image_items)},
         {"variants",     j_arr(vars)}
     });
 }
@@ -476,8 +707,32 @@ inline void setup_server(
     staff::StoreManagementService&                 store_mgmt_svc,
     payment::PaymentApplicationService&            payment_svc,
     shipping::ShippingApplicationService&          shipping_svc,
-    report::ReportApplicationService&              report_svc)
+    report::ReportApplicationService&              report_svc,
+    const std::filesystem::path&                   product_storefront_path)
 {
+    auto product_images_for = [&](const ProductId& product_id) {
+        const auto metadata = load_product_storefront_metadata(product_storefront_path);
+        const auto match = metadata.images_by_product.find(product_id.value);
+        return match != metadata.images_by_product.end()
+            ? match->second
+            : std::vector<std::string>{};
+    };
+
+    auto save_product_images = [&](const ProductId& product_id, const std::string& image_urls_text) {
+        auto metadata = load_product_storefront_metadata(product_storefront_path);
+        const auto images = parse_image_urls_text(image_urls_text);
+        if (images.empty()) {
+            metadata.images_by_product.erase(product_id.value);
+        } else {
+            metadata.images_by_product[product_id.value] = images;
+        }
+        save_product_storefront_metadata(product_storefront_path, metadata);
+    };
+
+    auto ser_product_with_storefront = [&](const Product& product) {
+        return ser_product(product, product_images_for(product.id()));
+    };
+
     // CORS preflight
     svr.Options(".*", [](const httplib::Request&, httplib::Response& res) {
         add_cors(res);
@@ -591,14 +846,14 @@ inline void setup_server(
         }
         auto products = catalog_svc.search_products(q);
         std::vector<std::string> arr;
-        for (const auto& p : products) arr.push_back(ser_product(p));
+        for (const auto& p : products) arr.push_back(ser_product_with_storefront(p));
         json_ok(res, j_arr(arr));
     });
 
     svr.Get("/api/products/:id", [&](const httplib::Request& req, httplib::Response& res) {
         auto p = catalog_svc.find_product(ProductId{req.path_params.at("id")});
         if (!p) { json_err(res, 404, "Product not found"); return; }
-        json_ok(res, ser_product(*p));
+        json_ok(res, ser_product_with_storefront(*p));
     });
 
     svr.Get("/api/variants/:id", [&](const httplib::Request& req, httplib::Response& res) {
@@ -882,7 +1137,19 @@ inline void setup_server(
         };
         auto result = store_mgmt_svc.create_product(draft);
         if (!result) { json_err(res, 400, "Create product failed"); return; }
-        json_ok(res, ser_product(result.value()));
+        save_product_images(draft.id, b.str("image_urls_text"));
+        json_ok(res, ser_product_with_storefront(result.value()));
+    });
+
+    svr.Post("/api/staff/products/:id/images", [&](const httplib::Request& req, httplib::Response& res) {
+        const auto product_id = ProductId{req.path_params.at("id")};
+        auto product = catalog_svc.find_product(product_id);
+        if (!product) { json_err(res, 404, "Product not found"); return; }
+        auto b = parse_body(req.body);
+        save_product_images(product_id, b.str("image_urls_text"));
+        product = catalog_svc.find_product(product_id);
+        if (!product) { json_err(res, 404, "Product not found"); return; }
+        json_ok(res, ser_product_with_storefront(*product));
     });
 
     svr.Post("/api/staff/products/:id/status", [&](const httplib::Request& req, httplib::Response& res) {
@@ -891,7 +1158,7 @@ inline void setup_server(
             ProductId{req.path_params.at("id")},
             pstatus_from(b.str("status")));
         if (!result) { json_err(res, 400, "Update status failed"); return; }
-        json_ok(res, ser_product(result.value()));
+        json_ok(res, ser_product_with_storefront(result.value()));
     });
 
     svr.Post("/api/staff/products/:id/variants", [&](const httplib::Request& req, httplib::Response& res) {
@@ -906,7 +1173,7 @@ inline void setup_server(
         auto result = store_mgmt_svc.add_product_variant(
             ProductId{req.path_params.at("id")}, vd);
         if (!result) { json_err(res, 400, "Add variant failed"); return; }
-        json_ok(res, ser_product(result.value()));
+        json_ok(res, ser_product_with_storefront(result.value()));
     });
 
     svr.Post("/api/staff/inventory", [&](const httplib::Request& req, httplib::Response& res) {
