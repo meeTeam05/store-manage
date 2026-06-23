@@ -297,6 +297,35 @@ static std::string ser_product(const Product& p) {
     });
 }
 
+static std::string ser_address(const ShippingAddress& address) {
+    return j_obj({
+        {"recipient_name", j_str(address.recipient_name)},
+        {"phone",          j_str(address.phone)},
+        {"line1",          j_str(address.line1)},
+        {"line2",          j_str(address.line2)},
+        {"ward",           j_str(address.ward)},
+        {"district",       j_str(address.district)},
+        {"city",           j_str(address.city)},
+        {"country",        j_str(address.country)}
+    });
+}
+
+static std::string ser_customer(const fashion_store::domain::customer::Customer& customer) {
+    std::vector<std::string> wishlist;
+    for (const auto& product_id : customer.wishlist().items()) {
+        wishlist.push_back(j_str(product_id.value));
+    }
+    return j_obj({
+        {"customer_id", j_str(customer.id().value)},
+        {"account_id",  j_str(customer.account_id().value)},
+        {"full_name",   j_str(customer.full_name())},
+        {"phone",       j_str(customer.phone())},
+        {"city",        j_str(customer.default_shipping_address().city)},
+        {"address",     ser_address(customer.default_shipping_address())},
+        {"wishlist",    j_arr(wishlist)}
+    });
+}
+
 static std::string ser_order(const Order& o) {
     std::vector<std::string> items;
     for (const auto& it : o.items()) {
@@ -364,6 +393,56 @@ static std::string ser_shipment(const fashion_store::domain::shipping::Shipment&
 
 // ── Server setup ──────────────────────────────────────────────────────────────
 
+static std::string place_order_error_message(
+    const fashion_store::application::order::PlaceOrderError& error) {
+    switch (error) {
+        case fashion_store::application::order::PlaceOrderError::CartNotFound:
+            return "Cart not found";
+        case fashion_store::application::order::PlaceOrderError::EmptyCart:
+            return "Cart is empty";
+        case fashion_store::application::order::PlaceOrderError::ProductVariantNotFound:
+            return "Selected variant was not found in backend data";
+        case fashion_store::application::order::PlaceOrderError::InventoryNotFound:
+            return "Inventory record was not found";
+        case fashion_store::application::order::PlaceOrderError::InsufficientStock:
+            return "Insufficient stock for one or more cart items";
+        case fashion_store::application::order::PlaceOrderError::VoucherNotFound:
+            return "Voucher was not found";
+        case fashion_store::application::order::PlaceOrderError::VoucherInvalid:
+            return "Voucher is invalid for this checkout";
+        case fashion_store::application::order::PlaceOrderError::OrderRuleViolation:
+            return "Order state rule prevented checkout";
+    }
+    return "Checkout failed";
+}
+
+static std::string slugify(std::string value) {
+    std::string slug;
+    slug.reserve(value.size());
+    bool previous_dash = false;
+    for (unsigned char ch : value) {
+        if (std::isalnum(ch)) {
+            slug.push_back(static_cast<char>(std::tolower(ch)));
+            previous_dash = false;
+            continue;
+        }
+        if (!previous_dash) {
+            slug.push_back('-');
+            previous_dash = true;
+        }
+    }
+    while (!slug.empty() && slug.front() == '-') {
+        slug.erase(slug.begin());
+    }
+    while (!slug.empty() && slug.back() == '-') {
+        slug.pop_back();
+    }
+    if (slug.empty()) {
+        return "user";
+    }
+    return slug;
+}
+
 static void add_cors(httplib::Response& res) {
     res.set_header("Access-Control-Allow-Origin",  "*");
     res.set_header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
@@ -388,6 +467,7 @@ inline void setup_server(
     identity::AuthApplicationService&              auth_svc,
     catalog::CatalogApplicationService&            catalog_svc,
     cart::CartApplicationService&                  cart_svc,
+    domain::identity::IAccountRepository&          account_repo,
     domain::customer::ICustomerRepository&         customer_repo,
     order::OrderApplicationService&                order_svc,
     review::ReviewApplicationService&              review_svc,
@@ -423,14 +503,79 @@ inline void setup_server(
             case domain::identity::Role::Admin:    role = "Admin";    break;
         }
         auto cust = customer_repo.find_by_account_id(acc.id());
-        std::string customer_id = cust.has_value() ? j_str(cust->id().value) : j_null();
-        std::string display_name = cust.has_value() ? j_str(cust->full_name()) : j_str(acc.username());
+        auto customer_id = cust.has_value() ? j_str(cust->id().value) : j_null();
+        auto display_name = cust.has_value() ? j_str(cust->full_name()) : j_str(acc.username());
+        auto customer_json = cust.has_value() ? ser_customer(*cust) : j_null();
         json_ok(res, j_obj({
             {"account_id",   j_str(acc.id().value)},
             {"username",     j_str(acc.username())},
             {"role",         j_str(role)},
             {"customer_id",  customer_id},
-            {"display_name", display_name}
+            {"display_name", display_name},
+            {"customer",     customer_json}
+        }));
+    });
+
+    svr.Post("/api/register", [&](const httplib::Request& req, httplib::Response& res) {
+        auto b = parse_body(req.body);
+        const auto username = b.str("username");
+        const auto password_hash = b.str("password_hash", b.str("passwordHash"));
+        const auto full_name = b.str("full_name", b.str("fullName"));
+        const auto phone = b.str("phone");
+        if (username.empty() || password_hash.empty() || full_name.empty() || phone.empty()) {
+            json_err(res, 400, "Username, password, full name, and phone are required");
+            return;
+        }
+        if (account_repo.find_by_username(username).has_value()) {
+            json_err(res, 409, "Username already exists");
+            return;
+        }
+
+        const auto slug = slugify(username);
+        std::string account_id = "account-" + slug;
+        std::string customer_id = "customer-" + slug;
+        int suffix = 1;
+        while (account_repo.find_by_id(AccountId{account_id}).has_value() ||
+               customer_repo.find_by_id(CustomerId{customer_id}).has_value()) {
+            ++suffix;
+            account_id = "account-" + slug + "-" + std::to_string(suffix);
+            customer_id = "customer-" + slug + "-" + std::to_string(suffix);
+        }
+
+        const ShippingAddress address{
+            b.str("recipient_name", full_name),
+            phone,
+            b.str("line1", "12 Nguyen Hue"),
+            b.str("line2"),
+            b.str("ward", "Ben Nghe"),
+            b.str("district", "District 1"),
+            b.str("city", "Ho Chi Minh City"),
+            b.str("country", "Vietnam")
+        };
+
+        const domain::identity::Account account(
+            AccountId{account_id},
+            username,
+            password_hash,
+            domain::identity::Role::Customer,
+            domain::identity::AccountStatus::Active);
+        const fashion_store::domain::customer::Customer customer(
+            CustomerId{customer_id},
+            AccountId{account_id},
+            full_name,
+            phone,
+            address);
+
+        account_repo.save(account);
+        customer_repo.save(customer);
+
+        json_ok(res, j_obj({
+            {"account_id",   j_str(account.id().value)},
+            {"username",     j_str(account.username())},
+            {"role",         j_str("Customer")},
+            {"customer_id",  j_str(customer.id().value)},
+            {"display_name", j_str(customer.full_name())},
+            {"customer",     ser_customer(customer)}
         }));
     });
 
@@ -472,6 +617,49 @@ inline void setup_server(
     });
 
     // ── Cart ──────────────────────────────────────────────────────────────────
+    svr.Get("/api/customers/:id", [&](const httplib::Request& req, httplib::Response& res) {
+        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
+        if (!customer.has_value()) {
+            json_err(res, 404, "Customer not found");
+            return;
+        }
+        json_ok(res, ser_customer(*customer));
+    });
+
+    svr.Post("/api/customers/:id/wishlist", [&](const httplib::Request& req, httplib::Response& res) {
+        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
+        if (!customer.has_value()) {
+            json_err(res, 404, "Customer not found");
+            return;
+        }
+        auto b = parse_body(req.body);
+        const auto product_id = b.str("product_id");
+        if (product_id.empty()) {
+            json_err(res, 400, "Product id is required");
+            return;
+        }
+        customer->add_to_wishlist(ProductId{product_id});
+        customer_repo.save(*customer);
+        json_ok(res, ser_customer(*customer));
+    });
+
+    svr.Post("/api/customers/:id/wishlist/remove", [&](const httplib::Request& req, httplib::Response& res) {
+        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
+        if (!customer.has_value()) {
+            json_err(res, 404, "Customer not found");
+            return;
+        }
+        auto b = parse_body(req.body);
+        const auto product_id = b.str("product_id");
+        if (product_id.empty()) {
+            json_err(res, 400, "Product id is required");
+            return;
+        }
+        customer->remove_from_wishlist(ProductId{product_id});
+        customer_repo.save(*customer);
+        json_ok(res, ser_customer(*customer));
+    });
+
     svr.Post("/api/cart/add", [&](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         auto result = cart_svc.add_item(
@@ -510,7 +698,7 @@ inline void setup_server(
         if (b.has("voucher_code") && !b.str("voucher_code").empty())
             vc = b.str("voucher_code");
         auto result = order_svc.preview_checkout(CartId{b.str("cart_id")}, vc);
-        if (!result) { json_err(res, 400, "Preview failed"); return; }
+        if (!result) { json_err(res, 400, place_order_error_message(result.error())); return; }
         const auto& pv = result.value();
         json_ok(res, j_obj({
             {"item_count",      j_num(pv.item_count)},
@@ -545,7 +733,7 @@ inline void setup_server(
             vc
         };
         auto result = order_svc.place_order(cmd);
-        if (!result) { json_err(res, 400, "Checkout failed"); return; }
+        if (!result) { json_err(res, 400, place_order_error_message(result.error())); return; }
         const auto& r = result.value();
         json_ok(res, j_obj({
             {"order",          ser_order(r.order)},
