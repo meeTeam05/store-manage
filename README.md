@@ -37,6 +37,9 @@ For the `g++` fallback build:
 .\build-gpp\fashion_store.exe
 ```
 
+On first run, the server now creates local runtime persistence under `data/`.
+Delete the generated `data/*.txt` files to reset the backend demo state.
+
 ## Smoke Test
 
 With CMake:
@@ -57,6 +60,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test-gpp.ps1
 - `web/product.html`: product detail shell
 - `web/cart.html`: cart shell
 - `web/login.html`: login shell
+- `web/wishlist.html`: customer wishlist shell
 - `web/payment.html`: local payment step before order submission
 - Visual direction: monochrome black-and-white UI with original-color product/editorial imagery
 
@@ -68,7 +72,7 @@ If a browser keeps an older stylesheet cached, refresh with `Ctrl + F5`.
 - Core domain scaffold is in place
 - Application services exist for auth, catalog, cart, customer, order, review, returns, staff operations, payment, shipping, reports, and API facade
 - Staff-side return management service supports approve, reject, restock, refund, and close flow
-- In-memory repositories support demo flow
+- Runtime server now uses file-based repositories under `data/`
 - File-based repositories support persistent round-trip smoke testing
 - Smoke test scaffold exists in `tests/core_smoke.cpp`
 - File persistence smoke test exists in `tests/file_persistence_smoke.cpp`
@@ -77,7 +81,8 @@ If a browser keeps an older stylesheet cached, refresh with `Ctrl + F5`.
 
 ## Demo Coverage
 
-- account sign-in against in-memory account repository
+- account sign-in with API-or-local fallback
+- customer self-registration with API-or-local fallback
 - customer profile lookup and wishlist update
 - cart add, change quantity, remove item support
 - checkout preview with voucher validation
@@ -90,6 +95,6 @@ If a browser keeps an older stylesheet cached, refresh with `Ctrl + F5`.
 - catalog product search, filter, and sort use cases
 - simulated payment and shipping flows
 - API facade for sign-in, catalog search, cart, and checkout flows
-- web login, product, cart, and payment pages share local demo state
+- web login, wishlist, product, cart, payment, and orders pages share local demo state
 - web API client can call backend endpoints and falls back to demo state when the API is unavailable
 - web storefront uses a dark monochrome shell so the C++ flow demo stays visually consistent across catalog, cart, and payment
