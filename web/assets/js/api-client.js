@@ -112,6 +112,8 @@
       if (!cartItems.length) {
         return { ok: false, error: "Cart is empty" };
       }
+      const customer = window.storefrontState ? window.storefrontState.getCustomerProfile() : null;
+      const address = customer?.address || {};
       const cartId = "cart-" + session.customerId + "-" + String(Date.now());
       // Sync each cart item to the server cart
       for (const item of cartItems) {
@@ -129,14 +131,14 @@
           customer_id: session.customerId,
           method,
           voucher_code: voucherCode || "",
-          recipient_name: session.displayName || session.username,
-          phone: "0900000000",
-          line1: "12 Nguyen Hue",
-          line2: "",
-          ward: "Ben Nghe",
-          district: "District 1",
-          city: "Ho Chi Minh City",
-          country: "Vietnam"
+          recipient_name: address.recipientName || customer?.fullName || session.displayName || session.username,
+          phone: address.phone || customer?.phone || "0900000000",
+          line1: address.line1 || "12 Nguyen Hue",
+          line2: address.line2 || "",
+          ward: address.ward || "Ben Nghe",
+          district: address.district || "District 1",
+          city: address.city || customer?.city || "Ho Chi Minh City",
+          country: address.country || "Vietnam"
         })
       });
     },

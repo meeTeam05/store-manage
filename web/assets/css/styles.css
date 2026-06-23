@@ -203,6 +203,17 @@ h3 {
   object-fit: cover;
 }
 
+.product-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.product-card:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 6px;
+}
+
 .product-card h3 {
   margin: 14px 0 6px;
   font-size: 28px;
@@ -879,6 +890,42 @@ h3 {
   gap: 20px;
 }
 
+.staff-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.staff-catalog-grid > form {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-solid);
+}
+
+.staff-inventory-toolbar {
+  margin-top: 32px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.empty-state h3,
+.empty-state p {
+  margin: 0;
+}
+
+.empty-state p {
+  margin-top: 8px;
+  color: var(--text-muted);
+}
+
 .admin-product-card {
   display: grid;
   gap: 18px;
@@ -1142,7 +1189,8 @@ h3 {
   .admin-field-grid,
   .admin-variant-list,
   .admin-report-grid,
-  .admin-report-grid-wide {
+  .admin-report-grid-wide,
+  .staff-catalog-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -1,9 +1,4 @@
-(function renderProductPage() {
-  const product = window.storefrontState.getProduct("product-001");
-  if (!product) {
-    return;
-  }
-
+(async function renderProductPage() {
   const gallery = document.getElementById("product-gallery");
   const title = document.getElementById("product-title");
   const category = document.getElementById("product-category");
@@ -15,87 +10,110 @@
   const wishlistButton = document.getElementById("wishlist-link");
   const status = document.getElementById("product-status");
 
-  let selectedSize = "M";
-  let selectedColor = "Black";
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    })[character]);
+  }
+
+  const catalog = await window.storefrontState.loadProductsWithApi();
+  const products = catalog.products || window.storefrontState.getProducts();
+  const requestedId = new URLSearchParams(window.location.search).get("id");
+  const product = products.find((entry) => entry.productId === requestedId) || products[0] || null;
+  if (!product) {
+    title.textContent = "Product unavailable";
+    status.textContent = "No product could be loaded from the catalog.";
+    addToCartButton.disabled = true;
+    wishlistButton.hidden = true;
+    return;
+  }
+
+  const variants = product.variants.filter((entry) => entry.active !== false);
+  let selectedVariant = variants[0] || null;
 
   title.textContent = product.name;
   category.textContent = product.category;
-  price.textContent = window.storefrontState.formatMoney(product.priceMinor);
   description.textContent = product.description;
-
   gallery.innerHTML = product.images.map((src, index) => `
-    <img src="${src}" alt="${product.name} view ${index + 1}">
+    <img src="${escapeHtml(src)}" alt="${escapeHtml(product.name)} view ${index + 1}">
   `).join("");
 
   function renderChips(row, values, selected, onSelect) {
     row.innerHTML = values.map((value) => `
-      <button class="chip ${value === selected ? "is-active" : ""}" type="button" data-value="${value}">${value}</button>
+      <button class="chip ${value === selected ? "is-active" : ""}" type="button" data-value="${escapeHtml(value)}">
+        ${escapeHtml(value)}
+      </button>
     `).join("");
-    row.querySelectorAll(".chip").forEach((button) => {
-      button.addEventListener("click", () => onSelect(button.dataset.value));
+    row.querySelectorAll("[data-value]").forEach((button) => {
+      button.addEventListener("click", () => onSelect(String(button.dataset.value || "")));
     });
-  }
-
-  function findVariant() {
-    return product.variants.find((entry) => entry.size === selectedSize && entry.color === selectedColor) || null;
   }
 
   function renderOptions() {
-    const sizes = [...new Set(product.variants.map((entry) => entry.size))];
-    const colors = [...new Set(product.variants.map((entry) => entry.color))];
-    renderChips(sizeRow, sizes, selectedSize, (value) => {
-      selectedSize = value;
+    if (!selectedVariant) {
+      price.textContent = window.storefrontState.formatMoney(product.priceMinor);
+      sizeRow.innerHTML = "";
+      colorRow.innerHTML = "";
+      addToCartButton.disabled = true;
+      status.textContent = "This product has no active variants.";
+      return;
+    }
+    const sizes = [...new Set(variants.map((entry) => entry.size))];
+    const colors = [...new Set(variants.filter((entry) => entry.size === selectedVariant.size).map((entry) => entry.color))];
+    renderChips(sizeRow, sizes, selectedVariant.size, (size) => {
+      selectedVariant = variants.find((entry) => entry.size === size && entry.color === selectedVariant.color)
+        || variants.find((entry) => entry.size === size)
+        || selectedVariant;
       renderOptions();
     });
-    renderChips(colorRow, colors, selectedColor, (value) => {
-      selectedColor = value;
+    renderChips(colorRow, colors, selectedVariant.color, (color) => {
+      selectedVariant = variants.find((entry) => entry.size === selectedVariant.size && entry.color === color) || selectedVariant;
       renderOptions();
     });
+    price.textContent = window.storefrontState.formatMoney(selectedVariant.priceMinor || product.priceMinor);
+    addToCartButton.disabled = selectedVariant.stockQuantity <= 0;
+    status.textContent = selectedVariant.stockQuantity > 0
+      ? `${selectedVariant.stockQuantity} item(s) available.`
+      : "Selected variant is out of stock.";
   }
-
-  renderOptions();
 
   function renderWishlistButton() {
     const session = window.storefrontState.getSession();
     if (!session || !session.customerId) {
       wishlistButton.textContent = "Sign In To Save";
-      wishlistButton.href = "login.html?returnTo=product.html";
+      wishlistButton.href = `login.html?returnTo=${encodeURIComponent(`product.html?id=${product.productId}`)}`;
       return;
     }
-
     const saved = window.storefrontState.isInWishlist(product.productId);
     wishlistButton.textContent = saved ? "Remove From Wishlist" : "Save To Wishlist";
     wishlistButton.href = "wishlist.html";
   }
 
   addToCartButton.addEventListener("click", async () => {
-    const variant = findVariant();
-    if (!variant) {
-      status.textContent = "Selected variant is unavailable.";
-      return;
-    }
-    const result = await window.storefrontState.addToCartWithApi(product.productId, variant.variantId, 1);
+    if (!selectedVariant) return;
+    addToCartButton.disabled = true;
+    const result = await window.storefrontState.addToCartWithApi(product.productId, selectedVariant.variantId, 1);
     status.textContent = result.ok
-      ? `Added ${product.name} / ${variant.color} / ${variant.size} to cart.`
+      ? `Added ${product.name} / ${selectedVariant.color} / ${selectedVariant.size} to cart.`
       : result.error;
+    addToCartButton.disabled = selectedVariant.stockQuantity <= 0;
   });
 
   wishlistButton.addEventListener("click", async (event) => {
     const session = window.storefrontState.getSession();
-    if (!session || !session.customerId) {
-      return;
-    }
+    if (!session || !session.customerId) return;
     event.preventDefault();
     const result = await window.storefrontState.toggleWishlist(product.productId);
-    if (!result.ok) {
-      status.textContent = result.error;
-      return;
-    }
-    renderWishlistButton();
-    status.textContent = result.saved
-      ? `Saved ${product.name} to wishlist. Open Wishlist from the top navigation.`
-      : `Removed ${product.name} from wishlist.`;
+    status.textContent = result.ok
+      ? (result.saved ? `Saved ${product.name} to wishlist.` : `Removed ${product.name} from wishlist.`)
+      : result.error;
+    if (result.ok) renderWishlistButton();
   });
 
+  renderOptions();
   renderWishlistButton();
 })();

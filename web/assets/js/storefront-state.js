@@ -31,6 +31,32 @@
     accounts: "fashion_store_accounts",
     customers: "fashion_store_customers"
   };
+  const productImageFallbacks = {
+    Outerwear: [
+      "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
+    ],
+    Dresses: [
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80"
+    ],
+    Bottoms: [
+      "https://images.unsplash.com/photo-1475180098004-ca77a66827be?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1506629905607-d9c297d2b2a7?auto=format&fit=crop&w=1200&q=80"
+    ],
+    Tops: [
+      "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&q=80"
+    ],
+    Shoes: [
+      "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1200&q=80"
+    ],
+    Accessories: [
+      "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=1200&q=80"
+    ]
+  };
 
   function readJson(key, fallback) {
     try {
@@ -62,16 +88,93 @@
     return Math.min(1, Math.max(0, numeric));
   }
 
+  function fallbackImagesForProduct(product) {
+    const local = (window.storefrontData.products || []).find((entry) => entry.productId === product.productId);
+    if (local && Array.isArray(local.images) && local.images.length > 0) {
+      return cloneData(local.images);
+    }
+    return cloneData(productImageFallbacks[product.category] || productImageFallbacks.Accessories);
+  }
+
+  function normalizeProductStatus(status) {
+    return ["Active", "Draft", "Archived", "Discontinued"].includes(status) ? status : "Active";
+  }
+
+  function lowestVariantPrice(variants) {
+    return variants.reduce((lowest, variant) => {
+      const price = normalizeMoney(variant.priceMinor, 0);
+      if (lowest === null || (price > 0 && price < lowest)) {
+        return price;
+      }
+      return lowest;
+    }, null) || 0;
+  }
+
   function normalizeProducts(products) {
-    return (products || []).map((product) => ({
-      ...product,
-      status: ["Active", "Draft", "Archived"].includes(product.status) ? product.status : "Active",
-      priceMinor: normalizeMoney(product.priceMinor, 0),
-      variants: (product.variants || []).map((variant) => ({
+    return (products || []).map((product) => {
+      const variants = (product.variants || []).map((variant) => ({
         ...variant,
-        stockQuantity: normalizeMoney(variant.stockQuantity, 8)
+        variantId: variant.variantId || variant.variant_id || "",
+        sku: variant.sku || "",
+        size: String(variant.size || ""),
+        color: String(variant.color || ""),
+        priceMinor: normalizeMoney(variant.priceMinor ?? variant.price_minor, 0),
+        active: variant.active !== false,
+        stockQuantity: normalizeMoney(variant.stockQuantity ?? variant.stock_quantity, 8)
+      }));
+      const normalized = {
+        ...product,
+        productId: product.productId || product.product_id || "",
+        name: String(product.name || "Untitled Product"),
+        category: String(product.category || "Accessories"),
+        description: String(product.description || ""),
+        collection: String(product.collection || ""),
+        status: normalizeProductStatus(product.status),
+        variants
+      };
+      normalized.priceMinor = normalizeMoney(product.priceMinor ?? product.price_minor, lowestVariantPrice(variants));
+      normalized.variants = variants.map((variant) => ({
+        ...variant,
+        priceMinor: variant.priceMinor || normalized.priceMinor
+      }));
+      normalized.images = Array.isArray(product.images) && product.images.length > 0
+        ? cloneData(product.images)
+        : fallbackImagesForProduct(normalized);
+      return normalized;
+    });
+  }
+
+  function normalizeApiProducts(products) {
+    const existingProducts = readJson(storageKeys.products, []);
+    const existingStockByVariant = new Map();
+    existingProducts.forEach((product) => {
+      (product.variants || []).forEach((variant) => {
+        const variantId = variant.variantId || variant.variant_id;
+        if (variantId) {
+          existingStockByVariant.set(variantId, variant.stockQuantity ?? variant.stock_quantity);
+        }
+      });
+    });
+    return normalizeProducts((products || []).map((product) => ({
+      productId: product.product_id,
+      name: product.name,
+      category: product.category,
+      description: product.description,
+      collection: product.collection,
+      status: product.status,
+      variants: (product.variants || []).map((variant) => ({
+        variantId: variant.variant_id,
+        sku: variant.sku,
+        size: variant.size,
+        color: variant.color,
+        priceMinor: variant.price_minor,
+        active: variant.active,
+        stockQuantity: normalizeMoney(
+          variant.stock_quantity ?? variant.stockQuantity,
+          existingStockByVariant.get(variant.variant_id) ?? 8
+        )
       }))
-    }));
+    })));
   }
 
   function normalizeVoucher(voucher) {
@@ -364,6 +467,23 @@
     return products ? normalizeProducts(products) : normalizeProducts(cloneData(window.storefrontData.products || []));
   }
 
+  async function loadProductsWithApi(params = {}) {
+    if (!window.storefrontApi) {
+      return { ok: false, error: "API unavailable", products: getProducts(), source: "local" };
+    }
+    const response = await window.storefrontApi.getProducts(params);
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Catalog unavailable",
+        products: getProducts(),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+    const products = persistProducts(normalizeApiProducts(response.data));
+    return { ok: true, products, source: "api" };
+  }
+
   function getProduct(productId) {
     return getProducts().find((entry) => entry.productId === productId) || null;
   }
@@ -433,6 +553,186 @@
     variant.stockQuantity = normalizedStock;
     persistProducts(products);
     return { ok: true, product, variant };
+  }
+
+  function findProductByVariantId(products, variantId) {
+    return products.find((product) => product.variants.some((variant) => variant.variantId === variantId)) || null;
+  }
+
+  function buildLocalId(prefix) {
+    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  function createLocalStaffProduct(draft) {
+    const products = getProducts();
+    const productId = String(draft.productId || buildLocalId("product")).trim();
+    if (products.some((product) => product.productId === productId)) {
+      return { ok: false, error: "Product ID already exists." };
+    }
+    const product = normalizeProducts([{
+      productId,
+      name: String(draft.name || "").trim(),
+      category: String(draft.category || "Accessories").trim(),
+      description: String(draft.description || "").trim(),
+      collection: String(draft.collection || "").trim(),
+      status: String(draft.status || "Draft"),
+      variants: []
+    }])[0];
+    if (!product.name || !product.category || !product.description) {
+      return { ok: false, error: "Product name, category, and description cannot be empty." };
+    }
+    const nextProducts = persistProducts([product, ...products]);
+    return { ok: true, product, products: nextProducts, source: "local" };
+  }
+
+  async function createStaffProductWithApi(draft) {
+    const normalizedDraft = {
+      productId: String(draft.productId || buildLocalId("product")).trim(),
+      name: String(draft.name || "").trim(),
+      category: String(draft.category || "Accessories").trim(),
+      description: String(draft.description || "").trim(),
+      collection: String(draft.collection || "").trim(),
+      status: String(draft.status || "Draft")
+    };
+    if (!normalizedDraft.name || !normalizedDraft.category || !normalizedDraft.description) {
+      return { ok: false, error: "Product name, category, and description cannot be empty." };
+    }
+    if (!window.storefrontApi) {
+      return createLocalStaffProduct(normalizedDraft);
+    }
+    const response = await window.storefrontApi.createProduct(normalizedDraft);
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? createLocalStaffProduct(normalizedDraft)
+        : { ok: false, error: `Backend product create failed: ${response.error}` };
+    }
+    const product = normalizeApiProducts([response.data])[0];
+    const products = getProducts();
+    const nextProducts = persistProducts([product, ...products.filter((entry) => entry.productId !== product.productId)]);
+    return { ok: true, product, products: nextProducts, source: "api" };
+  }
+
+  function addLocalProductVariant(productId, draft) {
+    const products = getProducts();
+    const product = products.find((entry) => entry.productId === productId);
+    if (!product) return { ok: false, error: "Product not found." };
+    const variantId = String(draft.variantId || buildLocalId("variant")).trim();
+    if (product.variants.some((variant) => variant.variantId === variantId)) {
+      return { ok: false, error: "Variant ID already exists for this product." };
+    }
+    const variant = {
+      variantId,
+      sku: String(draft.sku || "").trim(),
+      size: String(draft.size || "").trim(),
+      color: String(draft.color || "").trim(),
+      priceMinor: normalizeMoney(draft.priceMinor, product.priceMinor),
+      active: true,
+      stockQuantity: normalizeMoney(draft.stockQuantity, 0)
+    };
+    if (!variant.sku || !variant.size || !variant.color || variant.priceMinor <= 0) {
+      return { ok: false, error: "Variant sku, size, color, and price are required." };
+    }
+    product.variants.push(variant);
+    product.priceMinor = lowestVariantPrice(product.variants);
+    persistProducts(products);
+    return { ok: true, product, variant, products, source: "local" };
+  }
+
+  async function setStaffInventoryWithApi({ productId, variantId, onHand, reserved = 0 }) {
+    const normalizedOnHand = normalizeMoney(onHand, -1);
+    const normalizedReserved = normalizeMoney(reserved, 0);
+    if (normalizedOnHand < 0 || normalizedReserved < 0 || normalizedReserved > normalizedOnHand) {
+      return { ok: false, error: "Inventory values are invalid." };
+    }
+    if (!window.storefrontApi) {
+      return updateVariantStock(productId, variantId, normalizedOnHand - normalizedReserved);
+    }
+    const response = await window.storefrontApi.setInventory({ variantId, onHand: normalizedOnHand, reserved: normalizedReserved });
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? updateVariantStock(productId, variantId, normalizedOnHand - normalizedReserved)
+        : { ok: false, error: `Backend inventory set failed: ${response.error}` };
+    }
+    const products = getProducts();
+    const product = productId ? products.find((entry) => entry.productId === productId) : findProductByVariantId(products, variantId);
+    const variant = product ? product.variants.find((entry) => entry.variantId === variantId) : null;
+    if (variant) {
+      variant.stockQuantity = normalizeMoney(response.data.available ?? response.data.on_hand, normalizedOnHand - normalizedReserved);
+      persistProducts(products);
+    }
+    return { ok: true, inventory: response.data, product, variant, source: "api" };
+  }
+
+  async function addStaffProductVariantWithApi(productId, draft) {
+    const product = getProduct(productId);
+    if (!product) return { ok: false, error: "Product not found." };
+    const normalizedDraft = {
+      variantId: String(draft.variantId || buildLocalId("variant")).trim(),
+      sku: String(draft.sku || "").trim(),
+      size: String(draft.size || "").trim(),
+      color: String(draft.color || "").trim(),
+      priceMinor: normalizeMoney(draft.priceMinor, product.priceMinor),
+      stockQuantity: normalizeMoney(draft.stockQuantity, 0)
+    };
+    if (!normalizedDraft.sku || !normalizedDraft.size || !normalizedDraft.color || normalizedDraft.priceMinor <= 0) {
+      return { ok: false, error: "Variant sku, size, color, and price are required." };
+    }
+    if (!window.storefrontApi) return addLocalProductVariant(productId, normalizedDraft);
+    const response = await window.storefrontApi.addProductVariant(productId, normalizedDraft);
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? addLocalProductVariant(productId, normalizedDraft)
+        : { ok: false, error: `Backend variant create failed: ${response.error}` };
+    }
+    const backendProduct = normalizeApiProducts([response.data])[0];
+    const products = getProducts();
+    persistProducts(products.map((entry) => entry.productId === backendProduct.productId ? backendProduct : entry));
+    const inventoryResult = await setStaffInventoryWithApi({
+      productId,
+      variantId: normalizedDraft.variantId,
+      onHand: normalizedDraft.stockQuantity,
+      reserved: 0
+    });
+    if (!inventoryResult.ok) return inventoryResult;
+    const updatedProduct = getProduct(productId) || backendProduct;
+    const variant = updatedProduct.variants.find((entry) => entry.variantId === normalizedDraft.variantId) || null;
+    return { ok: true, product: updatedProduct, variant, products: getProducts(), source: "api" };
+  }
+
+  async function restockStaffInventoryWithApi({ productId, variantId, quantity }) {
+    const normalizedQuantity = normalizeMoney(quantity, -1);
+    if (normalizedQuantity <= 0) {
+      return { ok: false, error: "Restock quantity must be greater than zero." };
+    }
+    const localRestock = () => {
+      const product = getProduct(productId);
+      const variant = product ? product.variants.find((entry) => entry.variantId === variantId) : null;
+      return product && variant
+        ? updateVariantStock(product.productId, variantId, variant.stockQuantity + normalizedQuantity)
+        : { ok: false, error: "Variant not found." };
+    };
+    if (!window.storefrontApi) {
+      return localRestock();
+    }
+    const response = await window.storefrontApi.restockInventory(variantId, normalizedQuantity);
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? localRestock()
+        : { ok: false, error: `Backend restock failed: ${response.error}` };
+    }
+    const products = getProducts();
+    const product = productId
+      ? products.find((entry) => entry.productId === productId)
+      : findProductByVariantId(products, variantId);
+    const variant = product ? product.variants.find((entry) => entry.variantId === variantId) : null;
+    if (variant) {
+      variant.stockQuantity = normalizeMoney(
+        response.data.available ?? response.data.on_hand,
+        variant.stockQuantity + normalizedQuantity
+      );
+      persistProducts(products);
+    }
+    return { ok: true, inventory: response.data, product, variant, source: "api" };
   }
 
   function updateVoucher(patch) {
@@ -570,7 +870,7 @@
         productId,
         variantId,
         quantity: requestedQuantity,
-        unitPriceMinor: product.priceMinor
+        unitPriceMinor: variant.priceMinor || product.priceMinor
       });
     }
 
@@ -682,6 +982,11 @@
     return orders;
   }
 
+  function persistOrderRecord(order) {
+    const orders = getOrders();
+    return persistOrders([order, ...orders.filter((entry) => entry.orderId !== order.orderId)]);
+  }
+
   function hydrateCartItems() {
     return getCart().map((entry) => {
       const product = getProduct(entry.productId);
@@ -721,8 +1026,83 @@
     return `LOCAL-${Date.now().toString(36).toUpperCase()}`;
   }
 
+  function buildBackendTrackingCode(orderId) {
+    const compact = String(orderId || Date.now()).replace(/[^a-z0-9]/gi, "").slice(-10).toUpperCase();
+    return `API-${compact || Date.now().toString(36).toUpperCase()}`;
+  }
+
   function buildOrderNumber(orders) {
     return `SM-${String(orders.length + 1).padStart(4, "0")}`;
+  }
+
+  function buildBackendOrderNumber(orderId) {
+    const compact = String(orderId || "").replace(/^order-/i, "").replace(/[^a-z0-9]/gi, "-");
+    return compact ? `API-${compact.toUpperCase()}` : `API-${Date.now().toString(36).toUpperCase()}`;
+  }
+
+  function normalizeOrderStatus(status) {
+    return ["Draft", "AwaitingPayment", "Paid", "Packed", "Shipped", "Delivered", "Completed", "Cancelled", "Returned"].includes(status)
+      ? status
+      : "AwaitingPayment";
+  }
+
+  function normalizePaymentStatus(status) {
+    return ["Unpaid", "Pending", "Paid", "Failed", "Refunded"].includes(status) ? status : "Pending";
+  }
+
+  function shippingStatusFromOrderStatus(orderStatus) {
+    if (orderStatus === "Shipped") return "InTransit";
+    if (["Delivered", "Completed"].includes(orderStatus)) return "Delivered";
+    if (orderStatus === "Cancelled") return "Failed";
+    if (orderStatus === "Returned") return "Returned";
+    return "Preparing";
+  }
+
+  function normalizeBackendOrder(responseData, summary = {}, customer = null, session = {}, paymentReference = null) {
+    const payload = responseData?.order || responseData;
+    if (!payload || !(payload.order_id || payload.orderId)) return null;
+    const orderId = payload.order_id || payload.orderId;
+    const orderStatus = normalizeOrderStatus(payload.status || payload.orderStatus);
+    const items = (payload.items || []).map((item) => {
+      const unitPriceMinor = normalizeMoney(item.unit_price_minor ?? item.unitPriceMinor, 0);
+      const quantity = normalizeMoney(item.quantity, 1);
+      return {
+        orderItemId: item.order_item_id || item.orderItemId || `${orderId}-${item.variant_id || item.variantId}`,
+        productId: item.product_id || item.productId || "",
+        variantId: item.variant_id || item.variantId || "",
+        productName: item.product_name || item.productName || "Unknown Product",
+        sku: item.sku || "",
+        size: item.size || "-",
+        color: item.color || "-",
+        unitPriceMinor,
+        quantity,
+        lineTotalMinor: normalizeMoney(item.line_total_minor ?? item.lineTotalMinor, unitPriceMinor * quantity)
+      };
+    });
+    return {
+      orderId,
+      orderNumber: payload.order_number || payload.orderNumber || buildBackendOrderNumber(orderId),
+      createdAtIso: payload.created_at || payload.createdAtIso || new Date().toISOString(),
+      updatedAtIso: payload.updated_at || payload.updatedAtIso || new Date().toISOString(),
+      customerId: payload.customer_id || payload.customerId || session.customerId || "",
+      customerName: payload.customer_name || payload.customerName || customer?.fullName || session.displayName || session.username || "Unknown Customer",
+      paymentMethod: normalizePaymentMethod(payload.payment_method || payload.paymentMethod),
+      paymentStatus: normalizePaymentStatus(payload.payment_status || payload.paymentStatus),
+      orderStatus,
+      shippingMethod: payload.shipping_method || payload.shippingMethod || "Standard",
+      shippingStatus: payload.shipping_status || payload.shippingStatus || shippingStatusFromOrderStatus(orderStatus),
+      trackingCode: payload.tracking_code || payload.trackingCode || buildBackendTrackingCode(orderId),
+      backendState: "API connected",
+      paymentReference: paymentReference || payload.payment_reference || payload.paymentReference || null,
+      voucherCode: payload.voucher_code || payload.voucherCode || null,
+      subtotalMinor: normalizeMoney(responseData?.subtotal_minor ?? payload.subtotal_minor ?? payload.subtotalMinor, summary.subtotalMinor || 0),
+      discountMinor: normalizeMoney(responseData?.discount_minor ?? payload.discount_minor ?? payload.discountMinor, summary.discountMinor || 0),
+      totalMinor: normalizeMoney(responseData?.total_minor ?? payload.total_minor ?? payload.totalMinor, summary.totalMinor || 0),
+      items: items.length > 0 ? items : (summary.items || []),
+      inventoryReserved: true,
+      inventoryRestored: false,
+      source: "backend"
+    };
   }
 
   function updateOrderRecord(orderId, updater) {
@@ -827,6 +1207,70 @@
     });
   }
 
+  function mergeBackendOrders(backendOrders) {
+    const existingOrders = getOrders();
+    const backendIds = new Set(backendOrders.map((order) => order.orderId));
+    return persistOrders([
+      ...backendOrders,
+      ...existingOrders.filter((order) => !backendIds.has(order.orderId) && order.source !== "backend")
+    ]);
+  }
+
+  async function loadStaffOrdersWithApi() {
+    if (!window.storefrontApi) {
+      return { ok: false, error: "API unavailable", orders: getOrders(), source: "local" };
+    }
+    const response = await window.storefrontApi.getStaffOrders();
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Staff orders unavailable",
+        orders: getOrders(),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+    const orders = mergeBackendOrders(response.data.map((order) => normalizeBackendOrder(order)).filter(Boolean));
+    return { ok: true, orders, source: "api" };
+  }
+
+  function staffActionTargetStatus(action) {
+    return { pack: "Packed", ship: "Shipped", deliver: "Delivered", complete: "Completed" }[action] || "";
+  }
+
+  async function applyStaffOrderActionWithApi(orderId, action) {
+    const existingOrder = getOrders().find((order) => order.orderId === orderId) || null;
+    const isBackendOrder = existingOrder && (existingOrder.source === "backend" || existingOrder.backendState === "API connected");
+    if (!window.storefrontApi || !isBackendOrder) {
+      return applyStaffOrderAction(orderId, action);
+    }
+    let response;
+    if (action === "mark-paid") {
+      response = await window.storefrontApi.payOrder(orderId);
+    } else if (action === "cancel") {
+      response = await window.storefrontApi.cancelStaffOrder(orderId);
+    } else {
+      const status = staffActionTargetStatus(action);
+      if (!status) return { ok: false, error: "Unknown staff action." };
+      response = await window.storefrontApi.advanceStaffOrder(orderId, status);
+    }
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? applyStaffOrderAction(orderId, action)
+        : { ok: false, error: `Backend staff action failed: ${response.error}` };
+    }
+    const customer = existingOrder ? { fullName: existingOrder.customerName } : null;
+    const order = normalizeBackendOrder(
+      response.data,
+      existingOrder || {},
+      customer,
+      getSession() || {},
+      existingOrder?.paymentReference || null
+    );
+    if (!order) return { ok: false, error: "Backend staff action did not return an order." };
+    persistOrderRecord(order);
+    return { ok: true, order, orders: getOrders(), source: "api" };
+  }
+
   function createLocalOrderRecord(paymentMethod, summary, customer, session, backendState, paymentReference = null) {
     const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
     const isInstantPaid = normalizedPaymentMethod === "EWallet";
@@ -874,27 +1318,34 @@
 
     const customer = getCustomerProfile();
     const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
-    let backendState = "Local demo";
     let backendMessage = "Saved locally without live backend.";
     let paymentReference = null;
+    let order = null;
 
     if (window.storefrontApi) {
       try {
         const response = await window.storefrontApi.checkout({ method: normalizedPaymentMethod });
         if (response.ok) {
-          backendState = "API connected";
-          backendMessage = "Submitted to backend checkout endpoint.";
           const backendOrderId = response.data?.order?.order_id || response.data?.order?.orderId || null;
+          order = normalizeBackendOrder(response.data, summary, customer, session);
+          if (!order || !backendOrderId) {
+            applyInventoryDelta(summary.items, 1);
+            return { ok: false, error: "Backend checkout did not return a valid order." };
+          }
+          backendMessage = "Created from backend checkout response.";
           if (backendOrderId && normalizedPaymentMethod === "EWallet") {
             const paymentResult = await window.storefrontApi.authorizePayment(backendOrderId);
             if (paymentResult.ok) {
               paymentReference = paymentResult.data?.reference || null;
               const markPaidResult = await window.storefrontApi.payOrder(backendOrderId);
-              backendMessage = markPaidResult.ok
-                ? (paymentReference
+              if (markPaidResult.ok) {
+                order = normalizeBackendOrder(markPaidResult.data, summary, customer, session, paymentReference) || order;
+                backendMessage = paymentReference
                   ? `Backend order paid via E-Wallet (${paymentReference}).`
-                  : "Backend order paid via E-Wallet.")
-                : `Backend payment authorized${paymentReference ? ` (${paymentReference})` : ""} but mark-paid failed: ${markPaidResult.error}`;
+                  : "Backend order paid via E-Wallet.";
+              } else {
+                backendMessage = `Payment authorized${paymentReference ? ` (${paymentReference})` : ""}, but mark-paid failed: ${markPaidResult.error}`;
+              }
             } else {
               backendMessage = `Backend order created but e-wallet authorization failed: ${paymentResult.error}`;
             }
@@ -909,24 +1360,28 @@
               backendMessage = `Backend order created but transfer reference failed: ${paymentResult.error}`;
             }
           }
-        } else if (response.error) {
-          backendMessage = `Backend checkout unavailable: ${response.error}. Kept local demo order.`;
+          order.paymentReference = paymentReference;
+        } else if (response.error !== "API unavailable") {
+          applyInventoryDelta(summary.items, 1);
+          return { ok: false, error: `Backend checkout failed: ${response.error}` };
         }
       } catch (error) {
-        backendMessage = `Backend checkout threw an error: ${error instanceof Error ? error.message : "Unknown error"}. Kept local demo order.`;
+        applyInventoryDelta(summary.items, 1);
+        return { ok: false, error: `Backend checkout failed: ${error instanceof Error ? error.message : "Unknown error"}` };
       }
     }
 
-    const orders = getOrders();
-    const order = createLocalOrderRecord(
-      normalizedPaymentMethod,
-      summary,
-      customer,
-      session,
-      backendState,
-      paymentReference
-    );
-    persistOrders([order, ...orders]);
+    if (!order) {
+      order = createLocalOrderRecord(
+        normalizedPaymentMethod,
+        summary,
+        customer,
+        session,
+        "Local demo",
+        paymentReference
+      );
+    }
+    persistOrderRecord(order);
     clearCart();
 
     return {
@@ -945,9 +1400,14 @@
     signOut,
     getProduct,
     getProducts,
+    loadProductsWithApi,
     getVoucher,
     updateProduct,
     updateVariantStock,
+    createStaffProductWithApi,
+    addStaffProductVariantWithApi,
+    setStaffInventoryWithApi,
+    restockStaffInventoryWithApi,
     updateVoucher,
     getAdminReport,
     isInWishlist,
@@ -964,6 +1424,8 @@
     buildCartSummary,
     placeOrder,
     applyStaffOrderAction,
+    loadStaffOrdersWithApi,
+    applyStaffOrderActionWithApi,
     registerCustomer
   };
 })();

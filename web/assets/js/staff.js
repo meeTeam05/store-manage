@@ -1,4 +1,4 @@
-(function renderStaffDashboard() {
+(async function renderStaffDashboard() {
   function isStaffRole(role) {
     return ["Staff", "Manager", "Admin", "1", "2", "3"].includes(String(role));
   }
@@ -57,8 +57,16 @@
   const feedbackElement = document.getElementById("staff-order-feedback");
   const emptyElement = document.getElementById("staff-order-empty");
   const listElement = document.getElementById("staff-order-list");
+  const catalogFeedbackElement = document.getElementById("staff-catalog-feedback");
+  const productForm = document.getElementById("staff-product-form");
+  const variantForm = document.getElementById("staff-variant-form");
+  const variantProductSelect = document.getElementById("staff-variant-product");
+  const inventoryListElement = document.getElementById("staff-inventory-list");
   const filters = ["All", "AwaitingPayment", "Paid", "Packed", "Shipped", "Delivered", "Completed", "Cancelled"];
   let activeFilter = "All";
+  let ordersCache = [];
+  let orderSource = "local";
+  let productsCache = [];
 
   if (!session || !isStaffRole(session.role)) {
     window.location.href = "login.html";
@@ -98,9 +106,15 @@
     filtersElement.querySelectorAll("[data-filter]").forEach((button) => {
       button.addEventListener("click", () => {
         activeFilter = String(button.dataset.filter || "All");
-        render();
+        renderOrderList(ordersCache);
+        renderFilters();
       });
     });
+  }
+
+  function setCatalogFeedback(ok, message) {
+    catalogFeedbackElement.dataset.state = ok ? "success" : "error";
+    catalogFeedbackElement.textContent = message;
   }
 
   function renderOrderList(orders) {
@@ -111,7 +125,7 @@
     if (visibleOrders.length === 0) {
       emptyElement.hidden = false;
       emptyElement.textContent = orders.length === 0
-        ? "No local orders yet. Place a customer test order first."
+        ? "No orders yet. Place a customer test order first."
         : `No orders in ${activeFilter}.`;
       listElement.innerHTML = "";
       return;
@@ -183,25 +197,204 @@
     }).join("");
 
     listElement.querySelectorAll("[data-order-action]").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         const orderId = String(button.dataset.orderId || "");
         const action = String(button.dataset.orderAction || "");
-        const result = window.storefrontState.applyStaffOrderAction(orderId, action);
+        button.disabled = true;
+        const result = window.storefrontState.applyStaffOrderActionWithApi
+          ? await window.storefrontState.applyStaffOrderActionWithApi(orderId, action)
+          : window.storefrontState.applyStaffOrderAction(orderId, action);
         feedbackElement.dataset.state = result.ok ? "success" : "error";
         feedbackElement.textContent = result.ok
           ? `${result.order.orderNumber} updated: ${actionLabel(action)}.`
           : result.error;
-        render();
+        await render();
       });
     });
   }
 
-  function render() {
-    const orders = window.storefrontState.getOrders();
-    renderMetrics(orders);
-    renderFilters();
-    renderOrderList(orders);
+  async function loadOrders() {
+    if (!window.storefrontState.loadStaffOrdersWithApi) {
+      ordersCache = window.storefrontState.getOrders();
+      orderSource = "local";
+      return;
+    }
+
+    const result = await window.storefrontState.loadStaffOrdersWithApi();
+    ordersCache = result.orders;
+    orderSource = result.source;
+    if (!result.ok && result.error !== "API unavailable") {
+      feedbackElement.dataset.state = "error";
+      feedbackElement.textContent = result.error;
+    }
   }
 
-  render();
+  async function loadProducts() {
+    if (window.storefrontState.loadProductsWithApi) {
+      const result = await window.storefrontState.loadProductsWithApi();
+      productsCache = result.products;
+      if (!result.ok && result.error !== "API unavailable") {
+        setCatalogFeedback(false, result.error);
+      }
+      return;
+    }
+    productsCache = window.storefrontState.getProducts();
+  }
+
+  function renderProductSelect() {
+    if (productsCache.length === 0) {
+      variantProductSelect.innerHTML = '<option value="">Create a product first</option>';
+      variantProductSelect.disabled = true;
+      return;
+    }
+
+    variantProductSelect.disabled = false;
+    variantProductSelect.innerHTML = productsCache.map((product) => `
+      <option value="${escapeHtml(product.productId)}">${escapeHtml(product.name)} / ${escapeHtml(product.productId)}</option>
+    `).join("");
+  }
+
+  function renderInventoryList() {
+    const variants = productsCache.flatMap((product) => product.variants.map((variant) => ({
+      product,
+      variant
+    })));
+
+    if (variants.length === 0) {
+      inventoryListElement.innerHTML = `
+        <article class="empty-state">
+          <h3>No variants available</h3>
+          <p>Create a product variant before updating inventory.</p>
+        </article>
+      `;
+      return;
+    }
+
+    inventoryListElement.innerHTML = variants.map(({ product, variant }) => `
+      <article class="payment-card admin-product-card staff-inventory-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="summary-card-title">${escapeHtml(product.name)}</p>
+            <p class="payment-meta">${escapeHtml(variant.color)} / Size ${escapeHtml(variant.size)} / ${escapeHtml(variant.sku)}</p>
+          </div>
+          <div class="order-history-status">
+            <span>${escapeHtml(product.status)}</span>
+            <span>${escapeHtml(variant.stockQuantity)}</span>
+          </div>
+        </div>
+        <div class="admin-field-grid admin-form">
+          <label class="admin-field">
+            <span>Set Available</span>
+            <input type="number" min="0" step="1" value="${escapeHtml(variant.stockQuantity)}" data-stock-value>
+          </label>
+          <label class="admin-field">
+            <span>Restock Qty</span>
+            <input type="number" min="1" step="1" value="1" data-restock-value>
+          </label>
+          <div class="admin-actions">
+            <button class="button primary compact" type="button" data-inventory-action="set" data-product-id="${escapeHtml(product.productId)}" data-variant-id="${escapeHtml(variant.variantId)}">Set Stock</button>
+            <button class="button compact" type="button" data-inventory-action="restock" data-product-id="${escapeHtml(product.productId)}" data-variant-id="${escapeHtml(variant.variantId)}">Restock</button>
+          </div>
+        </div>
+      </article>
+    `).join("");
+
+    inventoryListElement.querySelectorAll("[data-inventory-action]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const card = button.closest(".staff-inventory-card");
+        const productId = String(button.dataset.productId || "");
+        const variantId = String(button.dataset.variantId || "");
+        const action = String(button.dataset.inventoryAction || "");
+        button.disabled = true;
+
+        const result = action === "set"
+          ? await window.storefrontState.setStaffInventoryWithApi({
+              productId,
+              variantId,
+              onHand: Number(card.querySelector("[data-stock-value]").value || 0),
+              reserved: 0
+            })
+          : await window.storefrontState.restockStaffInventoryWithApi({
+              productId,
+              variantId,
+              quantity: Number(card.querySelector("[data-restock-value]").value || 0)
+            });
+
+        setCatalogFeedback(result.ok, result.ok ? "Inventory updated." : result.error);
+        await renderCatalog();
+      });
+    });
+  }
+
+  async function renderCatalog() {
+    await loadProducts();
+    renderProductSelect();
+    renderInventoryList();
+  }
+
+  function attachCatalogForms() {
+    productForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(productForm);
+      const submitButton = productForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      const result = await window.storefrontState.createStaffProductWithApi({
+        productId: String(formData.get("productId") || "").trim(),
+        name: String(formData.get("name") || "").trim(),
+        category: String(formData.get("category") || "Accessories"),
+        status: String(formData.get("status") || "Draft"),
+        collection: String(formData.get("collection") || "").trim(),
+        description: String(formData.get("description") || "").trim()
+      });
+      submitButton.disabled = false;
+      setCatalogFeedback(result.ok, result.ok ? `${result.product.name} created.` : result.error);
+      if (result.ok) {
+        productForm.reset();
+        await renderCatalog();
+      }
+    });
+
+    variantForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(variantForm);
+      const productId = String(formData.get("productId") || "");
+      if (!productId) {
+        setCatalogFeedback(false, "Choose a product before adding a variant.");
+        return;
+      }
+
+      const submitButton = variantForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      const result = await window.storefrontState.addStaffProductVariantWithApi(productId, {
+        variantId: String(formData.get("variantId") || "").trim(),
+        sku: String(formData.get("sku") || "").trim(),
+        size: String(formData.get("size") || "").trim(),
+        color: String(formData.get("color") || "").trim(),
+        priceMinor: Number(formData.get("priceMinor") || 0),
+        stockQuantity: Number(formData.get("stockQuantity") || 0)
+      });
+      submitButton.disabled = false;
+      setCatalogFeedback(result.ok, result.ok ? "Variant added." : result.error);
+      if (result.ok) {
+        variantForm.reset();
+        await renderCatalog();
+      }
+    });
+  }
+
+  async function render() {
+    await loadOrders();
+    renderMetrics(ordersCache);
+    renderFilters();
+    renderOrderList(ordersCache);
+    if (feedbackElement && !feedbackElement.textContent) {
+      feedbackElement.textContent = orderSource === "api"
+        ? "Loaded live backend orders."
+        : "Showing local fallback orders.";
+    }
+  }
+
+  attachCatalogForms();
+  await renderCatalog();
+  await render();
 })();

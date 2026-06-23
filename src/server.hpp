@@ -638,6 +638,10 @@ inline void setup_server(
             json_err(res, 400, "Product id is required");
             return;
         }
+        if (!catalog_svc.find_product(ProductId{product_id}).has_value()) {
+            json_err(res, 404, "Product not found");
+            return;
+        }
         customer->add_to_wishlist(ProductId{product_id});
         customer_repo.save(*customer);
         json_ok(res, ser_customer(*customer));
