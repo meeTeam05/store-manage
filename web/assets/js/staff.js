@@ -117,6 +117,24 @@
     catalogFeedbackElement.textContent = message;
   }
 
+  function mergeImageText(imageText, uploadedImages) {
+    const lines = String(imageText || "")
+      .split(/\r?\n/g)
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set([...lines, ...(uploadedImages || [])])).join("\n");
+  }
+
+  async function readFilesAsDataUrls(fileInput) {
+    const files = Array.from(fileInput?.files || []);
+    return Promise.all(files.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+      reader.readAsDataURL(file);
+    })));
+  }
+
   function renderOrderList(orders) {
     const visibleOrders = activeFilter === "All"
       ? orders
@@ -336,6 +354,8 @@
     productForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(productForm);
+      const uploadedImages = await readFilesAsDataUrls(productForm.querySelector('[name="imageFiles"]'));
+      const imageUrlsText = mergeImageText(formData.get("imageUrlsText"), uploadedImages);
       const submitButton = productForm.querySelector('button[type="submit"]');
       submitButton.disabled = true;
       const result = await window.storefrontState.createStaffProductWithApi({
@@ -344,10 +364,16 @@
         category: String(formData.get("category") || "Accessories"),
         status: String(formData.get("status") || "Draft"),
         collection: String(formData.get("collection") || "").trim(),
-        description: String(formData.get("description") || "").trim()
+        description: String(formData.get("description") || "").trim(),
+        imageUrlsText,
+        images: uploadedImages
       });
       submitButton.disabled = false;
-      setCatalogFeedback(result.ok, result.ok ? `${result.product.name} created.` : result.error);
+      setCatalogFeedback(result.ok, result.ok
+        ? (result.source === "api"
+          ? `${result.product.name} created and image metadata saved to \`data/product_storefront.json\`.`
+          : `${result.product.name} created for this local session.`)
+        : result.error);
       if (result.ok) {
         productForm.reset();
         await renderCatalog();

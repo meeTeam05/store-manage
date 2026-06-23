@@ -38,6 +38,24 @@
     feedbackElement.textContent = message;
   }
 
+  function mergeImageText(imageText, uploadedImages) {
+    const lines = String(imageText || "")
+      .split(/\r?\n/g)
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set([...lines, ...(uploadedImages || [])])).join("\n");
+  }
+
+  async function readFilesAsDataUrls(fileInput) {
+    const files = Array.from(fileInput?.files || []);
+    return Promise.all(files.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+      reader.readAsDataURL(file);
+    })));
+  }
+
   function renderOverview(report) {
     const metrics = [
       { label: "Active Products", value: report.activeProducts },
@@ -54,13 +72,17 @@
     `).join("");
   }
 
-  function saveProductCard(card) {
+  async function saveProductCard(card) {
     const productId = String(card.dataset.productId || "");
     const name = card.querySelector('[name="name"]').value.trim();
     const category = card.querySelector('[name="category"]').value.trim();
     const priceMinor = Number(card.querySelector('[name="priceMinor"]').value);
     const status = card.querySelector('[name="status"]').value;
     const description = card.querySelector('[name="description"]').value.trim();
+    const imageUrlsInput = card.querySelector('[name="imageUrlsText"]');
+    const imageFilesInput = card.querySelector('[name="imageFiles"]');
+    const uploadedImages = await readFilesAsDataUrls(imageFilesInput);
+    const imageUrlsText = mergeImageText(imageUrlsInput?.value, uploadedImages);
 
     const productResult = window.storefrontState.updateProduct(productId, {
       name,
@@ -84,7 +106,25 @@
       }
     }
 
-    setFeedback(true, `${productResult.product.name} updated for this local session.`);
+    const imageResult = await window.storefrontState.saveProductImagesWithApi(productId, {
+      imageUrlsText,
+      images: uploadedImages
+    });
+    if (!imageResult.ok) {
+      setFeedback(false, imageResult.error);
+      return;
+    }
+
+    if (imageUrlsInput) {
+      imageUrlsInput.value = imageUrlsText;
+    }
+    if (imageFilesInput) {
+      imageFilesInput.value = "";
+    }
+
+    setFeedback(true, imageResult.source === "api"
+      ? `${productResult.product.name} updated, and product images saved to \`data/product_storefront.json\`.`
+      : `${productResult.product.name} updated for this local session.`);
     render();
   }
 
@@ -118,7 +158,7 @@
           <label class="admin-field">
             <span>Status</span>
             <select name="status">
-              ${["Active", "Draft", "Archived"].map((status) => `
+              ${["Active", "Draft", "Discontinued"].map((status) => `
                 <option value="${status}" ${status === product.status ? "selected" : ""}>${status}</option>
               `).join("")}
             </select>
@@ -127,6 +167,20 @@
             <span>Description</span>
             <textarea name="description" rows="4">${escapeHtml(product.description)}</textarea>
           </label>
+          <label class="admin-field admin-field-full">
+            <span>Image URLs (one per line)</span>
+            <textarea name="imageUrlsText" rows="4">${escapeHtml((product.images || []).join("\n"))}</textarea>
+          </label>
+          <label class="admin-field admin-field-full">
+            <span>Or upload local images</span>
+            <input name="imageFiles" type="file" accept="image/*" multiple>
+          </label>
+        </div>
+
+        <div class="admin-image-preview-list">
+          ${(product.images || []).map((image, index) => `
+            <img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)} image ${index + 1}">
+          `).join("")}
         </div>
 
         <div class="admin-variant-list">
@@ -151,12 +205,17 @@
     `).join("");
 
     productListElement.querySelectorAll("[data-save-product]").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         const card = button.closest("[data-product-id]");
         if (!card) {
           return;
         }
-        saveProductCard(card);
+        button.disabled = true;
+        try {
+          await saveProductCard(card);
+        } finally {
+          button.disabled = false;
+        }
       });
     });
   }

@@ -989,6 +989,25 @@ h3 {
   gap: 10px;
 }
 
+.admin-image-preview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.admin-image-preview-list:empty {
+  display: none;
+}
+
+.admin-image-preview-list img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
 .admin-report-body {
   display: grid;
   gap: 18px;

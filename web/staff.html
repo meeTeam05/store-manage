@@ -13,8 +13,7 @@
   <header class="site-header">
     <a class="brand" href="index.html">Store Manage</a>
     <nav class="nav">
-      <a href="index.html">Storefront</a>
-      <a href="cart.html">Cart</a>
+      <a href="admin.html">Admin</a>
       <a href="login.html" data-auth-link>Switch Account</a>
     </nav>
   </header>
@@ -68,7 +67,7 @@
         <div class="staff-toolbar">
           <div>
             <p class="summary-card-title">Catalog & Inventory</p>
-            <p class="payment-meta">Create products, add variants, and update backend inventory for sellable items.</p>
+            <p class="payment-meta">Create products, upload product images, and update backend inventory for sellable items.</p>
           </div>
         </div>
         <p id="staff-catalog-feedback" class="status" aria-live="polite"></p>
@@ -109,6 +108,14 @@
             <label class="admin-field admin-field-full">
               <span>Description</span>
               <textarea name="description" required placeholder="Short product description"></textarea>
+            </label>
+            <label class="admin-field admin-field-full">
+              <span>Image URLs (one per line)</span>
+              <textarea name="imageUrlsText" placeholder="https://example.com/look-1.jpg&#10;https://example.com/look-2.jpg"></textarea>
+            </label>
+            <label class="admin-field admin-field-full">
+              <span>Or upload local images</span>
+              <input name="imageFiles" type="file" accept="image/*" multiple>
             </label>
             <div class="admin-actions">
               <button class="button primary compact" type="submit">Create Product</button>

@@ -215,10 +215,24 @@
     },
 
     // Staff: catalog
-    async createProduct({ productId, name, category, description, collection, status = "Active" }) {
+    async createProduct({ productId, name, category, description, collection, status = "Active", imageUrlsText = "" }) {
       return request("/api/staff/products", {
         method: "POST",
-        body: JSON.stringify({ product_id: productId, name, category, description, collection, status })
+        body: JSON.stringify({
+          product_id: productId,
+          name,
+          category,
+          description,
+          collection,
+          status,
+          image_urls_text: imageUrlsText
+        })
+      });
+    },
+    async saveProductImages(productId, imageUrlsText = "") {
+      return request(`/api/staff/products/${productId}/images`, {
+        method: "POST",
+        body: JSON.stringify({ image_urls_text: imageUrlsText })
       });
     },
     async updateProductStatus(productId, status) {

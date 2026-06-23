@@ -88,6 +88,18 @@
     return Math.min(1, Math.max(0, numeric));
   }
 
+  function uniqueStrings(values) {
+    return Array.from(new Set((values || []).map((value) => String(value || "").trim()).filter(Boolean)));
+  }
+
+  function parseProductImageText(value) {
+    return uniqueStrings(String(value || "").split(/\r?\n/g));
+  }
+
+  function stringifyProductImages(images) {
+    return uniqueStrings(images).join("\n");
+  }
+
   function fallbackImagesForProduct(product) {
     const local = (window.storefrontData.products || []).find((entry) => entry.productId === product.productId);
     if (local && Array.isArray(local.images) && local.images.length > 0) {
@@ -162,6 +174,7 @@
       description: product.description,
       collection: product.collection,
       status: product.status,
+      images: Array.isArray(product.images) ? cloneData(product.images) : [],
       variants: (product.variants || []).map((variant) => ({
         variantId: variant.variant_id,
         sku: variant.sku,
@@ -518,10 +531,18 @@
       name: String(patch.name ?? current.name).trim(),
       category: String(patch.category ?? current.category).trim(),
       description: String(patch.description ?? current.description).trim(),
+      collection: String(patch.collection ?? current.collection).trim(),
       priceMinor: normalizeMoney(patch.priceMinor, current.priceMinor),
-      status: ["Active", "Draft", "Archived"].includes(String(patch.status))
-        ? String(patch.status)
-        : current.status
+      status: normalizeProductStatus(String(patch.status ?? current.status)),
+      images: (() => {
+        if (Array.isArray(patch.images)) {
+          return uniqueStrings(patch.images);
+        }
+        if (typeof patch.imageUrlsText === "string") {
+          return parseProductImageText(patch.imageUrlsText);
+        }
+        return cloneData(current.images || []);
+      })()
     };
 
     if (!next.name || !next.category || !next.description) {
@@ -576,6 +597,7 @@
       description: String(draft.description || "").trim(),
       collection: String(draft.collection || "").trim(),
       status: String(draft.status || "Draft"),
+      images: Array.isArray(draft.images) ? draft.images : parseProductImageText(draft.imageUrlsText),
       variants: []
     }])[0];
     if (!product.name || !product.category || !product.description) {
@@ -586,13 +608,18 @@
   }
 
   async function createStaffProductWithApi(draft) {
+    const normalizedImages = Array.isArray(draft.images)
+      ? uniqueStrings(draft.images)
+      : parseProductImageText(draft.imageUrlsText);
     const normalizedDraft = {
       productId: String(draft.productId || buildLocalId("product")).trim(),
       name: String(draft.name || "").trim(),
       category: String(draft.category || "Accessories").trim(),
       description: String(draft.description || "").trim(),
       collection: String(draft.collection || "").trim(),
-      status: String(draft.status || "Draft")
+      status: String(draft.status || "Draft"),
+      imageUrlsText: stringifyProductImages(normalizedImages),
+      images: normalizedImages
     };
     if (!normalizedDraft.name || !normalizedDraft.category || !normalizedDraft.description) {
       return { ok: false, error: "Product name, category, and description cannot be empty." };
@@ -610,6 +637,41 @@
     const products = getProducts();
     const nextProducts = persistProducts([product, ...products.filter((entry) => entry.productId !== product.productId)]);
     return { ok: true, product, products: nextProducts, source: "api" };
+  }
+
+  async function saveProductImagesWithApi(productId, { imageUrlsText = "", images = [] } = {}) {
+    const product = getProduct(productId);
+    if (!product) {
+      return { ok: false, error: "Product not found." };
+    }
+
+    const mergedImages = uniqueStrings([
+      ...parseProductImageText(imageUrlsText),
+      ...(Array.isArray(images) ? images : [])
+    ]);
+    const localResult = updateProduct(productId, {
+      images: mergedImages
+    });
+    if (!localResult.ok) {
+      return localResult;
+    }
+
+    if (!window.storefrontApi) {
+      return { ok: true, product: localResult.product, products: localResult.products, source: "local" };
+    }
+
+    const response = await window.storefrontApi.saveProductImages(productId, stringifyProductImages(mergedImages));
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? { ok: true, product: localResult.product, products: localResult.products, source: "local" }
+        : { ok: false, error: `Backend image save failed: ${response.error}` };
+    }
+
+    const backendProduct = normalizeApiProducts([response.data])[0];
+    const nextProducts = persistProducts(
+      getProducts().map((entry) => entry.productId === backendProduct.productId ? backendProduct : entry)
+    );
+    return { ok: true, product: backendProduct, products: nextProducts, source: "api" };
   }
 
   function addLocalProductVariant(productId, draft) {
@@ -1405,6 +1467,7 @@
     updateProduct,
     updateVariantStock,
     createStaffProductWithApi,
+    saveProductImagesWithApi,
     addStaffProductVariantWithApi,
     setStaffInventoryWithApi,
     restockStaffInventoryWithApi,
