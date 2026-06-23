@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $outputDir = Join-Path $root "build-gpp"
 $compiler = "C:\msys64\ucrt64\bin\g++.exe"
+$windowsDefs = @("-D_WIN32_WINNT=0x0A00", "-DWINVER=0x0A00")
 
 if (-not (Test-Path $compiler)) {
     throw "g++ not found at $compiler"
@@ -22,40 +23,40 @@ $coreSources = @(
     "src/infrastructure/persistence/file/file_repositories.cpp"
 )
 
-& $compiler -std=c++20 -Isrc "src/main.cpp" @coreSources -o (Join-Path $outputDir "fashion_store.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "src/main.cpp" @coreSources -o (Join-Path $outputDir "fashion_store.exe") -lws2_32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/core_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_core_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/core_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_core_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/file_persistence_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_file_persistence_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/file_persistence_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_file_persistence_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/order_consistency_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_order_consistency_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/order_consistency_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_order_consistency_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/review_return_guards_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_review_return_guards_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/review_return_guards_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_review_return_guards_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/return_management_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_return_management_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/return_management_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_return_management_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/report_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_report_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/report_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_report_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/staff_catalog_management_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_staff_catalog_management_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/staff_catalog_management_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_staff_catalog_management_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/payment_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_payment_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/payment_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_payment_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/shipping_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_shipping_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/shipping_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_shipping_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/api_facade_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_api_facade_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/api_facade_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_api_facade_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& $compiler -std=c++20 -Isrc "tests/auth_roles_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_auth_roles_smoke.exe")
+& $compiler -std=c++20 @windowsDefs -Isrc "tests/auth_roles_smoke.cpp" @coreSources -o (Join-Path $outputDir "fashion_store_auth_roles_smoke.exe")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Build completed in $outputDir"

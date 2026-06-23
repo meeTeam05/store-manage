@@ -1,4 +1,5 @@
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <optional>
 
@@ -20,8 +21,26 @@
 #include "domain/inventory/inventory_item.hpp"
 #include "domain/order/order.hpp"
 #include "domain/pricing/voucher.hpp"
-#include "infrastructure/persistence/in_memory/in_memory_repositories.hpp"
+#include "infrastructure/persistence/file/file_repositories.hpp"
 #include "server.hpp"
+
+namespace {
+
+std::filesystem::path resolve_project_path(const std::string& leaf) {
+    const auto cwd = std::filesystem::current_path();
+    if (std::filesystem::exists(cwd / "src") && std::filesystem::exists(cwd / "web")) {
+        return cwd / leaf;
+    }
+
+    const auto parent = cwd.parent_path();
+    if (std::filesystem::exists(parent / "src") && std::filesystem::exists(parent / "web")) {
+        return parent / leaf;
+    }
+
+    return cwd / leaf;
+}
+
+}  // namespace
 
 int main() {
     using namespace fashion_store::application::cart;
@@ -42,156 +61,228 @@ int main() {
     using namespace fashion_store::domain::order;
     using namespace fashion_store::domain::pricing;
     using namespace fashion_store::domain::shared;
-    using namespace fashion_store::infrastructure::persistence::in_memory;
+    using namespace fashion_store::infrastructure::persistence::file;
 
-    // ── Repositories ──────────────────────────────────────────────────────────
-    InMemoryProductRepository   product_repository;
-    InMemoryCustomerRepository  customer_repository;
-    InMemoryAccountRepository   account_repository;
-    InMemoryInventoryRepository inventory_repository;
-    InMemoryCartRepository      cart_repository;
-    InMemoryOrderRepository     order_repository;
-    InMemoryVoucherRepository   voucher_repository;
-    InMemoryReviewRepository    review_repository;
-    InMemoryReturnRepository    return_repository;
+    const auto data_dir = resolve_project_path("data");
+    std::filesystem::create_directories(data_dir);
 
-    // ── Products ──────────────────────────────────────────────────────────────
-    {
-        Product p(ProductId{"product-001"}, "Structured House Overshirt",
-                  Category::Outerwear, "Relaxed luxury overshirt for daily wear.", "Resort 2026");
-        (void)p.add_variant(ProductVariantDraft{
-            VariantId{"variant-001-black-m"}, "MA-OVR-001-BLK-M",
-            Size{"M"}, Color{"Black"}, Money::from_minor(490000)});
-        (void)p.add_variant(ProductVariantDraft{
-            VariantId{"variant-001-white-l"}, "MA-OVR-001-WHT-L",
-            Size{"L"}, Color{"White"}, Money::from_minor(490000)});
-        product_repository.save(p);
-    }
-    {
-        Product p(ProductId{"product-002"}, "Silk Slip Dress",
-                  Category::Dresses, "Effortless silk slip for all occasions.", "Summer 2026");
-        (void)p.add_variant(ProductVariantDraft{
-            VariantId{"variant-002-ivory-s"}, "MA-DRS-002-IVR-S",
-            Size{"S"}, Color{"Ivory"}, Money::from_minor(750000)});
-        (void)p.add_variant(ProductVariantDraft{
-            VariantId{"variant-002-navy-m"}, "MA-DRS-002-NVY-M",
-            Size{"M"}, Color{"Navy"}, Money::from_minor(750000)});
-        product_repository.save(p);
-    }
-    {
-        Product p(ProductId{"product-003"}, "Relaxed Chino",
-                  Category::Bottoms, "Everyday-ready relaxed chino.", "Everyday Essentials");
-        (void)p.add_variant(ProductVariantDraft{
-            VariantId{"variant-003-khaki-m"}, "MA-BTM-003-KHK-M",
-            Size{"M"}, Color{"Khaki"}, Money::from_minor(320000)});
-        (void)p.add_variant(ProductVariantDraft{
-            VariantId{"variant-003-olive-l"}, "MA-BTM-003-OLV-L",
-            Size{"L"}, Color{"Olive"}, Money::from_minor(320000)});
-        product_repository.save(p);
-    }
+    FileProductRepository product_repository(data_dir / "products.txt");
+    FileCustomerRepository customer_repository(data_dir / "customers.txt");
+    FileAccountRepository account_repository(data_dir / "accounts.txt");
+    FileInventoryRepository inventory_repository(data_dir / "inventory.txt");
+    FileCartRepository cart_repository(data_dir / "carts.txt");
+    FileOrderRepository order_repository(data_dir / "orders.txt");
+    FileVoucherRepository voucher_repository(data_dir / "vouchers.txt");
+    FileReviewRepository review_repository(data_dir / "reviews.txt");
+    FileReturnRepository return_repository(data_dir / "returns.txt");
 
-    // ── Inventory ─────────────────────────────────────────────────────────────
-    inventory_repository.save(InventoryItem(VariantId{"variant-001-black-m"}, 20));
-    inventory_repository.save(InventoryItem(VariantId{"variant-001-white-l"}, 15));
-    inventory_repository.save(InventoryItem(VariantId{"variant-002-ivory-s"}, 10));
-    inventory_repository.save(InventoryItem(VariantId{"variant-002-navy-m"}, 10));
-    inventory_repository.save(InventoryItem(VariantId{"variant-003-khaki-m"}, 25));
-    inventory_repository.save(InventoryItem(VariantId{"variant-003-olive-l"}, 25));
-
-    // ── Accounts and Customers ────────────────────────────────────────────────
     const ShippingAddress default_addr{
-        "Nguyen Van A", "0900000000",
-        "12 Nguyen Hue", "", "Ben Nghe", "District 1", "Ho Chi Minh City", "Vietnam"};
+        "Nguyen Van A",
+        "0900000000",
+        "12 Nguyen Hue",
+        "",
+        "Ben Nghe",
+        "District 1",
+        "Ho Chi Minh City",
+        "Vietnam"
+    };
 
-    customer_repository.save(Customer(
-        CustomerId{"customer-001"}, AccountId{"account-001"},
-        "Nguyen Van A", "0900000000", default_addr));
+    if (!product_repository.find_by_id(ProductId{"product-001"}).has_value()) {
+        Product product(
+            ProductId{"product-001"},
+            "Structured Coat",
+            Category::Outerwear,
+            "Long-line black coat with quiet shoulder structure, fluid drape, and a disciplined silhouette for day-to-evening wear.",
+            "Maison Aureline 2026");
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-001-black-s"},
+            "COAT-BLK-S",
+            Size{"S"},
+            Color{"Black"},
+            Money::from_minor(4900000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-001-black-m"},
+            "COAT-BLK-M",
+            Size{"M"},
+            Color{"Black"},
+            Money::from_minor(4900000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-001-black-l"},
+            "COAT-BLK-L",
+            Size{"L"},
+            Color{"Black"},
+            Money::from_minor(4900000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-001-ivory-s"},
+            "COAT-IVR-S",
+            Size{"S"},
+            Color{"Ivory"},
+            Money::from_minor(4900000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-001-ivory-m"},
+            "COAT-IVR-M",
+            Size{"M"},
+            Color{"Ivory"},
+            Money::from_minor(4900000)});
+        product_repository.save(product);
+    }
 
-    account_repository.save(Account(
-        AccountId{"account-001"}, "client001", "hash:123456",
-        Role::Customer, AccountStatus::Active));
-    account_repository.save(Account(
-        AccountId{"account-002"}, "staff001", "hash:123456",
-        Role::Staff, AccountStatus::Active));
-    account_repository.save(Account(
-        AccountId{"account-003"}, "admin001", "hash:123456",
-        Role::Admin, AccountStatus::Active));
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-001-black-s"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-001-black-s"}, 10));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-001-black-m"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-001-black-m"}, 12));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-001-black-l"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-001-black-l"}, 8));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-001-ivory-s"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-001-ivory-s"}, 9));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-001-ivory-m"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-001-ivory-m"}, 9));
+    }
 
-    // ── Voucher ────────────────────────────────────────────────────────────────
+    if (!customer_repository.find_by_id(CustomerId{"customer-001"}).has_value()) {
+        customer_repository.save(Customer(
+            CustomerId{"customer-001"},
+            AccountId{"account-001"},
+            "Nguyen Van A",
+            "0900000000",
+            default_addr));
+    }
+
+    if (!account_repository.find_by_id(AccountId{"account-001"}).has_value()) {
+        account_repository.save(Account(
+            AccountId{"account-001"},
+            "client001",
+            "hash:123456",
+            Role::Customer,
+            AccountStatus::Active));
+    }
+    if (!account_repository.find_by_id(AccountId{"account-002"}).has_value()) {
+        account_repository.save(Account(
+            AccountId{"account-002"},
+            "staff001",
+            "hash:staff123",
+            Role::Staff,
+            AccountStatus::Active));
+    }
+    if (!account_repository.find_by_id(AccountId{"account-003"}).has_value()) {
+        account_repository.save(Account(
+            AccountId{"account-003"},
+            "admin001",
+            "hash:admin123",
+            Role::Admin,
+            AccountStatus::Active));
+    }
+
     const auto now = std::chrono::system_clock::now();
-    voucher_repository.save(Voucher(
-        "WELCOME10", DiscountType::Percentage, 10,
-        Money::from_minor(300000), Money::from_minor(80000),
-        now - std::chrono::hours(24),
-        now + std::chrono::hours(24 * 30),
-        100, true));
+    if (!voucher_repository.find_by_code("WELCOME10").has_value()) {
+        voucher_repository.save(Voucher(
+            "WELCOME10",
+            DiscountType::Percentage,
+            10,
+            Money::from_minor(1000000),
+            Money::from_minor(800000),
+            now - std::chrono::hours(24),
+            now + std::chrono::hours(24 * 30),
+            100,
+            true));
+    }
 
-    // ── Services ──────────────────────────────────────────────────────────────
-    CartApplicationService      cart_svc(cart_repository, product_repository);
-    CustomerApplicationService  customer_svc(customer_repository);
-    AuthApplicationService      auth_svc(account_repository);
-    CatalogApplicationService   catalog_svc(product_repository);
-    OrderApplicationService     order_svc(
-        cart_repository, order_repository,
-        product_repository, inventory_repository, voucher_repository);
-    ReviewApplicationService    review_svc(order_repository, review_repository);
-    ReturnsApplicationService   returns_svc(order_repository, return_repository);
-    ReturnManagementService     return_mgmt_svc(
-        return_repository, order_repository, inventory_repository);
-    StoreManagementService      store_mgmt_svc(
-        product_repository, inventory_repository,
-        order_repository, voucher_repository, order_svc);
-    PaymentApplicationService   payment_svc;
-    ShippingApplicationService  shipping_svc;
-    ReportApplicationService    report_svc(order_repository, inventory_repository);
+    CartApplicationService cart_svc(cart_repository, product_repository);
+    CustomerApplicationService customer_svc(customer_repository);
+    AuthApplicationService auth_svc(account_repository);
+    CatalogApplicationService catalog_svc(product_repository);
+    OrderApplicationService order_svc(
+        cart_repository,
+        order_repository,
+        product_repository,
+        inventory_repository,
+        voucher_repository);
+    ReviewApplicationService review_svc(order_repository, review_repository);
+    ReturnsApplicationService returns_svc(order_repository, return_repository);
+    ReturnManagementService return_mgmt_svc(
+        return_repository,
+        order_repository,
+        inventory_repository);
+    StoreManagementService store_mgmt_svc(
+        product_repository,
+        inventory_repository,
+        order_repository,
+        voucher_repository,
+        order_svc);
+    PaymentApplicationService payment_svc;
+    ShippingApplicationService shipping_svc;
+    ReportApplicationService report_svc(order_repository, inventory_repository);
 
-    // ── Seed: order-seed-001 (Completed, for review/return demo) ─────────────
-    {
-        const CartId cid{"cart-seed-001"};
-        (void)cart_svc.add_item(cid, CustomerId{"customer-001"},
-                                VariantId{"variant-001-black-m"}, 1);
-        auto placed = order_svc.place_order(PlaceOrderCommand{
-            OrderId{"order-seed-001"}, cid,
-            CustomerId{"customer-001"}, default_addr,
-            PaymentMethod::EWallet, std::string("WELCOME10")});
-        if (!placed) { std::cerr << "seed order-seed-001 place failed\n"; return 1; }
+    if (order_repository.list_all().empty()) {
+        const CartId completed_cart_id{"cart-seed-001"};
+        (void)cart_svc.add_item(
+            completed_cart_id,
+            CustomerId{"customer-001"},
+            VariantId{"variant-001-black-m"},
+            1);
+        auto completed_seed = order_svc.place_order(PlaceOrderCommand{
+            OrderId{"order-seed-001"},
+            completed_cart_id,
+            CustomerId{"customer-001"},
+            default_addr,
+            PaymentMethod::EWallet,
+            std::string("WELCOME10")});
+        if (!completed_seed) {
+            std::cerr << "seed order-seed-001 place failed\n";
+            return 1;
+        }
         if (!order_svc.mark_order_paid(OrderId{"order-seed-001"})) {
-            std::cerr << "seed order-seed-001 pay failed\n"; return 1;
+            std::cerr << "seed order-seed-001 pay failed\n";
+            return 1;
         }
         (void)order_svc.advance_order_status(OrderId{"order-seed-001"}, OrderStatus::Packed);
         (void)order_svc.advance_order_status(OrderId{"order-seed-001"}, OrderStatus::Shipped);
         (void)order_svc.advance_order_status(OrderId{"order-seed-001"}, OrderStatus::Delivered);
-        auto completed = order_svc.advance_order_status(
-            OrderId{"order-seed-001"}, OrderStatus::Completed);
-        if (!completed) { std::cerr << "seed order-seed-001 complete failed\n"; return 1; }
-    }
+        if (!order_svc.advance_order_status(OrderId{"order-seed-001"}, OrderStatus::Completed)) {
+            std::cerr << "seed order-seed-001 complete failed\n";
+            return 1;
+        }
 
-    // ── Seed: order-seed-002 (Paid, for advance/cancel demo) ─────────────────
-    {
-        const CartId cid{"cart-seed-002"};
-        (void)cart_svc.add_item(cid, CustomerId{"customer-001"},
-                                VariantId{"variant-002-ivory-s"}, 1);
-        auto placed = order_svc.place_order(PlaceOrderCommand{
-            OrderId{"order-seed-002"}, cid,
-            CustomerId{"customer-001"}, default_addr,
-            PaymentMethod::Cash, std::nullopt});
-        if (!placed) { std::cerr << "seed order-seed-002 place failed\n"; return 1; }
-        if (!order_svc.mark_order_paid(OrderId{"order-seed-002"})) {
-            std::cerr << "seed order-seed-002 pay failed\n"; return 1;
+        const CartId pending_cart_id{"cart-seed-002"};
+        (void)cart_svc.add_item(
+            pending_cart_id,
+            CustomerId{"customer-001"},
+            VariantId{"variant-001-ivory-s"},
+            1);
+        if (!order_svc.place_order(PlaceOrderCommand{
+                OrderId{"order-seed-002"},
+                pending_cart_id,
+                CustomerId{"customer-001"},
+                default_addr,
+                PaymentMethod::BankTransfer,
+                std::nullopt})) {
+            std::cerr << "seed order-seed-002 place failed\n";
+            return 1;
         }
     }
 
-    (void)customer_svc;  // used only in sign-in handler via customer_repository directly
+    (void)customer_svc;
 
-    // ── HTTP server ───────────────────────────────────────────────────────────
     httplib::Server svr;
     fashion_store::server::setup_server(
         svr,
-        auth_svc, catalog_svc, cart_svc,
+        auth_svc,
+        catalog_svc,
+        cart_svc,
+        account_repository,
         customer_repository,
-        order_svc, review_svc, returns_svc,
-        return_mgmt_svc, store_mgmt_svc,
-        payment_svc, shipping_svc, report_svc);
+        order_svc,
+        review_svc,
+        returns_svc,
+        return_mgmt_svc,
+        store_mgmt_svc,
+        payment_svc,
+        shipping_svc,
+        report_svc);
 
     std::cout << "listening on port 8080\n";
     std::cout.flush();

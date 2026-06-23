@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if (WIN32)
+    add_compile_definitions(_WIN32_WINNT=0x0A00 WINVER=0x0A00)
+endif()
+
 find_package(Threads REQUIRED)
 
 enable_testing()
@@ -28,6 +32,10 @@ add_executable(fashion_store
 )
 
 target_link_libraries(fashion_store PRIVATE fashion_store_core Threads::Threads)
+
+if (WIN32)
+    target_link_libraries(fashion_store PRIVATE ws2_32)
+endif()
 
 add_executable(fashion_store_core_smoke
     tests/core_smoke.cpp
