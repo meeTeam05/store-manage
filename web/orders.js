@@ -47,7 +47,7 @@
       <div class="info-grid order-history-grid">
         <article>
           <span>Payment</span>
-          <p>${order.paymentMethod}</p>
+          <p>${order.paymentMethod}${order.paymentReference ? ` / ${order.paymentReference}` : ""}</p>
         </article>
         <article>
           <span>Tracking</span>

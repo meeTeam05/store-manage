@@ -827,9 +827,9 @@
     });
   }
 
-  function createLocalOrderRecord(paymentMethod, summary, customer, session, backendState) {
+  function createLocalOrderRecord(paymentMethod, summary, customer, session, backendState, paymentReference = null) {
     const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
-    const isInstantPaid = normalizedPaymentMethod !== "Cash";
+    const isInstantPaid = normalizedPaymentMethod === "EWallet";
     const existingOrders = getOrders();
     const createdAtIso = new Date().toISOString();
     return {
@@ -845,6 +845,7 @@
       shippingStatus: "Preparing",
       trackingCode: buildTrackingCode(),
       backendState,
+      paymentReference,
       voucherCode: summary.discountMinor > 0 ? getVoucher().code : null,
       subtotalMinor: summary.subtotalMinor,
       discountMinor: summary.discountMinor,
@@ -875,17 +876,56 @@
     const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
     let backendState = "Local demo";
     let backendMessage = "Saved locally without live backend.";
+    let paymentReference = null;
 
     if (window.storefrontApi) {
-      const response = await window.storefrontApi.checkout({ method: normalizedPaymentMethod });
-      if (response.ok) {
-        backendState = "API connected";
-        backendMessage = "Synced with backend checkout endpoint.";
+      try {
+        const response = await window.storefrontApi.checkout({ method: normalizedPaymentMethod });
+        if (response.ok) {
+          backendState = "API connected";
+          backendMessage = "Submitted to backend checkout endpoint.";
+          const backendOrderId = response.data?.order?.order_id || response.data?.order?.orderId || null;
+          if (backendOrderId && normalizedPaymentMethod === "EWallet") {
+            const paymentResult = await window.storefrontApi.authorizePayment(backendOrderId);
+            if (paymentResult.ok) {
+              paymentReference = paymentResult.data?.reference || null;
+              const markPaidResult = await window.storefrontApi.payOrder(backendOrderId);
+              backendMessage = markPaidResult.ok
+                ? (paymentReference
+                  ? `Backend order paid via E-Wallet (${paymentReference}).`
+                  : "Backend order paid via E-Wallet.")
+                : `Backend payment authorized${paymentReference ? ` (${paymentReference})` : ""} but mark-paid failed: ${markPaidResult.error}`;
+            } else {
+              backendMessage = `Backend order created but e-wallet authorization failed: ${paymentResult.error}`;
+            }
+          } else if (backendOrderId && normalizedPaymentMethod === "BankTransfer") {
+            const paymentResult = await window.storefrontApi.authorizePayment(backendOrderId);
+            if (paymentResult.ok) {
+              paymentReference = paymentResult.data?.reference || null;
+              backendMessage = paymentReference
+                ? `Backend order is awaiting bank transfer. Reference: ${paymentReference}.`
+                : "Backend order is awaiting bank transfer confirmation.";
+            } else {
+              backendMessage = `Backend order created but transfer reference failed: ${paymentResult.error}`;
+            }
+          }
+        } else if (response.error) {
+          backendMessage = `Backend checkout unavailable: ${response.error}. Kept local demo order.`;
+        }
+      } catch (error) {
+        backendMessage = `Backend checkout threw an error: ${error instanceof Error ? error.message : "Unknown error"}. Kept local demo order.`;
       }
     }
 
     const orders = getOrders();
-    const order = createLocalOrderRecord(normalizedPaymentMethod, summary, customer, session, backendState);
+    const order = createLocalOrderRecord(
+      normalizedPaymentMethod,
+      summary,
+      customer,
+      session,
+      backendState,
+      paymentReference
+    );
     persistOrders([order, ...orders]);
     clearCart();
 
@@ -910,8 +950,12 @@
     updateVariantStock,
     updateVoucher,
     getAdminReport,
+    isInWishlist,
+    getWishlistProducts,
     addToCart,
     addToCartWithApi,
+    toggleWishlist,
+    getCart,
     setCartQuantity,
     removeFromCart,
     clearCart,
@@ -923,7 +967,3 @@
     registerCustomer
   };
 })();
-    isInWishlist,
-    getWishlistProducts,
-    toggleWishlist,
-    getCart,

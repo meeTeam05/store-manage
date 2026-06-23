@@ -53,6 +53,12 @@
   }
 
   function renderConfirmation(order, backendMessage) {
+    const referenceBlock = order.paymentReference ? `
+      <article>
+        <span>Reference</span>
+        <p>${order.paymentReference}</p>
+      </article>
+    ` : "";
     confirmationBlock.hidden = false;
     confirmationInfo.innerHTML = `
       <article>
@@ -71,6 +77,7 @@
         <span>Backend</span>
         <p>${backendMessage}</p>
       </article>
+      ${referenceBlock}
     `;
 
     confirmationItems.innerHTML = order.items.map((item) => `

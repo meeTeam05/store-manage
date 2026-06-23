@@ -25,6 +25,24 @@
         body: JSON.stringify({ username, password_hash: passwordHash })
       });
     },
+    async registerCustomer({ username, passwordHash, fullName, phone, address = {} }) {
+      return request("/api/register", {
+        method: "POST",
+        body: JSON.stringify({
+          username,
+          password_hash: passwordHash,
+          full_name: fullName,
+          phone,
+          recipient_name: address.recipientName || fullName,
+          line1: address.line1 || "12 Nguyen Hue",
+          line2: address.line2 || "",
+          ward: address.ward || "Ben Nghe",
+          district: address.district || "District 1",
+          city: address.city || "Ho Chi Minh City",
+          country: address.country || "Vietnam"
+        })
+      });
+    },
 
     // Catalog
     async getProducts(params = {}) {
@@ -39,6 +57,21 @@
     },
     async getProductReviews(productId) {
       return request(`/api/products/${productId}/reviews`);
+    },
+    async getCustomerProfile(customerId) {
+      return request(`/api/customers/${customerId}`);
+    },
+    async addToWishlist(customerId, productId) {
+      return request(`/api/customers/${customerId}/wishlist`, {
+        method: "POST",
+        body: JSON.stringify({ product_id: productId })
+      });
+    },
+    async removeFromWishlist(customerId, productId) {
+      return request(`/api/customers/${customerId}/wishlist/remove`, {
+        method: "POST",
+        body: JSON.stringify({ product_id: productId })
+      });
     },
 
     // Cart
@@ -79,7 +112,7 @@
       if (!cartItems.length) {
         return { ok: false, error: "Cart is empty" };
       }
-      const cartId = "cart-" + session.customerId;
+      const cartId = "cart-" + session.customerId + "-" + String(Date.now());
       // Sync each cart item to the server cart
       for (const item of cartItems) {
         const r = await this.addToCart(cartId, session.customerId, item.variantId, item.quantity);
@@ -268,36 +301,3 @@
     }
   };
 })();
-    async registerCustomer({ username, passwordHash, fullName, phone, address = {} }) {
-      return request("/api/register", {
-        method: "POST",
-        body: JSON.stringify({
-          username,
-          password_hash: passwordHash,
-          full_name: fullName,
-          phone,
-          recipient_name: address.recipientName || fullName,
-          line1: address.line1 || "12 Nguyen Hue",
-          line2: address.line2 || "",
-          ward: address.ward || "Ben Nghe",
-          district: address.district || "District 1",
-          city: address.city || "Ho Chi Minh City",
-          country: address.country || "Vietnam"
-        })
-      });
-    },
-    async getCustomerProfile(customerId) {
-      return request(`/api/customers/${customerId}`);
-    },
-    async addToWishlist(customerId, productId) {
-      return request(`/api/customers/${customerId}/wishlist`, {
-        method: "POST",
-        body: JSON.stringify({ product_id: productId })
-      });
-    },
-    async removeFromWishlist(customerId, productId) {
-      return request(`/api/customers/${customerId}/wishlist/remove`, {
-        method: "POST",
-        body: JSON.stringify({ product_id: productId })
-      });
-    },
