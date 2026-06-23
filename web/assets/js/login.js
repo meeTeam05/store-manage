@@ -1,6 +1,8 @@
 const form = document.getElementById("login-form");
 const statusElement = document.getElementById("status");
 const roleHintsElement = document.getElementById("role-hints");
+const registerForm = document.getElementById("register-form");
+const registerStatusElement = document.getElementById("register-status");
 
 if (roleHintsElement) {
   roleHintsElement.innerHTML = `
@@ -35,7 +37,7 @@ function targetPathForRole(role) {
 function requestedReturnPath() {
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo");
-  const allowedTargets = new Set(["index.html", "product.html", "cart.html", "payment.html", "orders.html"]);
+  const allowedTargets = new Set(["index.html", "product.html", "cart.html", "payment.html", "orders.html", "wishlist.html"]);
   return allowedTargets.has(String(returnTo)) ? String(returnTo) : null;
 }
 
@@ -65,5 +67,31 @@ if (form && statusElement) {
       return;
     }
     window.location.href = targetPathForRole(result.session.role);
+  });
+}
+
+if (registerForm && registerStatusElement) {
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(registerForm);
+    const result = await window.storefrontState.registerCustomer({
+      fullName: String(formData.get("full_name") || "").trim(),
+      phone: String(formData.get("phone") || "").trim(),
+      city: String(formData.get("city") || "").trim(),
+      line1: String(formData.get("line1") || "").trim(),
+      username: String(formData.get("username") || "").trim(),
+      password: String(formData.get("password") || "").trim()
+    });
+    if (!result.ok) {
+      registerStatusElement.textContent = result.error;
+      registerStatusElement.dataset.state = "error";
+      return;
+    }
+
+    const name = result.session.displayName || result.session.customerName || result.session.username;
+    registerStatusElement.textContent = `Registered and signed in as ${name}.`;
+    registerStatusElement.dataset.state = "success";
+    const returnTo = requestedReturnPath();
+    window.location.href = returnTo || "cart.html";
   });
 }

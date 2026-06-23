@@ -27,7 +27,9 @@
     cart: "fashion_store_cart",
     orders: "fashion_store_orders",
     products: "fashion_store_products",
-    voucher: "fashion_store_voucher"
+    voucher: "fashion_store_voucher",
+    accounts: "fashion_store_accounts",
+    customers: "fashion_store_customers"
   };
 
   function readJson(key, fallback) {
@@ -86,6 +88,127 @@
     return new Intl.NumberFormat("vi-VN").format(minor) + " VND";
   }
 
+  function buildDefaultAddress(fullName, phone, city = "Ho Chi Minh City", line1 = "12 Nguyen Hue") {
+    return {
+      recipientName: fullName || "Customer",
+      phone: phone || "0900000000",
+      line1: line1 || "12 Nguyen Hue",
+      line2: "",
+      ward: "Ben Nghe",
+      district: "District 1",
+      city: city || "Ho Chi Minh City",
+      country: "Vietnam"
+    };
+  }
+
+  function normalizeCustomerRecord(customer) {
+    const fullName = String(customer?.fullName || customer?.full_name || "").trim();
+    const phone = String(customer?.phone || "").trim();
+    const city = String(customer?.city || customer?.address?.city || customer?.address?.City || "Ho Chi Minh City").trim() || "Ho Chi Minh City";
+    const rawAddress = customer?.address || {};
+    const address = {
+      recipientName: String(rawAddress.recipientName || rawAddress.recipient_name || fullName || "Customer").trim(),
+      phone: String(rawAddress.phone || phone || "0900000000").trim(),
+      line1: String(rawAddress.line1 || "12 Nguyen Hue").trim(),
+      line2: String(rawAddress.line2 || "").trim(),
+      ward: String(rawAddress.ward || "Ben Nghe").trim(),
+      district: String(rawAddress.district || "District 1").trim(),
+      city,
+      country: String(rawAddress.country || "Vietnam").trim()
+    };
+    return {
+      customerId: String(customer?.customerId || customer?.customer_id || "").trim(),
+      accountId: String(customer?.accountId || customer?.account_id || "").trim(),
+      fullName,
+      phone,
+      city,
+      address,
+      wishlist: Array.isArray(customer?.wishlist)
+        ? Array.from(new Set(customer.wishlist.map((entry) => String(entry).trim()).filter(Boolean)))
+        : []
+    };
+  }
+
+  function normalizeAccountRecord(account, fallback = {}) {
+    return {
+      accountId: String(account?.accountId || account?.account_id || fallback.accountId || "").trim(),
+      username: String(account?.username || fallback.username || "").trim(),
+      passwordHash: String(account?.passwordHash || account?.password_hash || fallback.passwordHash || "").trim(),
+      role: account?.role ?? fallback.role ?? "Customer",
+      customerId: account?.customerId ?? account?.customer_id ?? fallback.customerId ?? null,
+      employeeId: account?.employeeId ?? account?.employee_id ?? fallback.employeeId ?? null
+    };
+  }
+
+  function getAccounts() {
+    const seed = cloneData(window.storefrontData.accounts || []);
+    return (readJson(storageKeys.accounts, seed) || []).map((entry) => normalizeAccountRecord(entry));
+  }
+
+  function persistAccounts(accounts) {
+    const normalized = (accounts || []).map((entry) => normalizeAccountRecord(entry));
+    writeJson(storageKeys.accounts, normalized);
+    return normalized;
+  }
+
+  function getCustomers() {
+    const seed = cloneData(window.storefrontData.customers || []);
+    return (readJson(storageKeys.customers, seed) || []).map((entry) => normalizeCustomerRecord(entry));
+  }
+
+  function persistCustomers(customers) {
+    const normalized = (customers || []).map((entry) => normalizeCustomerRecord(entry));
+    writeJson(storageKeys.customers, normalized);
+    return normalized;
+  }
+
+  function upsertAccount(rawAccount) {
+    const accounts = getAccounts();
+    const index = accounts.findIndex((entry) =>
+      entry.accountId === (rawAccount?.accountId || rawAccount?.account_id || "") ||
+      entry.username === (rawAccount?.username || "")
+    );
+    const current = index >= 0 ? accounts[index] : {};
+    const next = normalizeAccountRecord(rawAccount, current);
+    if (index >= 0) {
+      accounts[index] = next;
+    } else {
+      accounts.push(next);
+    }
+    persistAccounts(accounts);
+    return next;
+  }
+
+  function upsertCustomer(rawCustomer) {
+    const customers = getCustomers();
+    const index = customers.findIndex((entry) =>
+      entry.customerId === (rawCustomer?.customerId || rawCustomer?.customer_id || "") ||
+      entry.accountId === (rawCustomer?.accountId || rawCustomer?.account_id || "")
+    );
+    const current = index >= 0 ? customers[index] : {};
+    const next = normalizeCustomerRecord({ ...current, ...rawCustomer });
+    if (index >= 0) {
+      customers[index] = next;
+    } else {
+      customers.push(next);
+    }
+    persistCustomers(customers);
+    return next;
+  }
+
+  function buildSession(account, customer) {
+    const employee = (window.storefrontData.employees || []).find((entry) => entry.employeeId === account.employeeId);
+    return {
+      accountId: account.accountId,
+      username: account.username,
+      role: account.role,
+      customerId: account.customerId,
+      employeeId: account.employeeId,
+      displayName: customer ? customer.fullName : (employee ? employee.fullName : account.username),
+      customerName: customer ? customer.fullName : account.username
+    };
+  }
+
   function getSession() {
     return readJson(storageKeys.session, null);
   }
@@ -95,37 +218,34 @@
     if (!session || !session.customerId) {
       return null;
     }
-    return window.storefrontData.customers.find((entry) => entry.customerId === session.customerId) || null;
+    return getCustomers().find((entry) => entry.customerId === session.customerId) || null;
   }
 
   function normalizePasswordHash(password) {
     return password.startsWith("hash:") ? password : `hash:${password}`;
   }
 
+  function slugify(value) {
+    const slug = String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return slug || "customer";
+  }
+
   function signIn(username, passwordHash) {
     const normalizedPasswordHash = normalizePasswordHash(passwordHash);
-    const account = window.storefrontData.accounts.find(
+    const account = getAccounts().find(
       (entry) => entry.username === username && entry.passwordHash === normalizedPasswordHash
     );
     if (!account) {
       return { ok: false, error: "Invalid credentials for demo account." };
     }
 
-    const customer = window.storefrontData.customers.find(
+    const customer = getCustomers().find(
       (entry) => entry.customerId === account.customerId
     );
-    const employee = window.storefrontData.employees.find(
-      (entry) => entry.employeeId === account.employeeId
-    );
-    const session = {
-      accountId: account.accountId,
-      username: account.username,
-      role: account.role,
-      customerId: account.customerId,
-      employeeId: account.employeeId,
-      displayName: customer ? customer.fullName : (employee ? employee.fullName : account.username),
-      customerName: customer ? customer.fullName : account.username
-    };
+    const session = buildSession(account, customer);
     writeJson(storageKeys.session, session);
     return { ok: true, session };
   }
@@ -135,23 +255,104 @@
     if (window.storefrontApi) {
       const response = await window.storefrontApi.signIn(username, normalizedPasswordHash);
       if (response.ok && response.data) {
-        const account = response.data;
-        const customer = window.storefrontData.customers.find(
-          (entry) => entry.customerId === account.customerId
+        const account = upsertAccount({
+          accountId: response.data.accountId || response.data.account_id,
+          username: response.data.username,
+          passwordHash: normalizedPasswordHash,
+          role: response.data.role,
+          customerId: response.data.customerId || response.data.customer_id
+        });
+        const customer = response.data.customer ? upsertCustomer(response.data.customer) : (
+          account.customerId ? getCustomers().find((entry) => entry.customerId === account.customerId) || null : null
         );
-        const session = {
-          accountId: account.accountId || account.account_id,
-          username: account.username,
-          role: account.role,
-          customerId: account.customerId || (customer ? customer.customerId : null),
-          customerName: account.customerName || (customer ? customer.fullName : account.username),
-          displayName: account.displayName || account.customerName || (customer ? customer.fullName : account.username)
-        };
+        const session = buildSession(account, customer);
+        if (response.data.displayName) {
+          session.displayName = response.data.displayName;
+        }
         writeJson(storageKeys.session, session);
         return { ok: true, session };
       }
     }
     return signIn(username, normalizedPasswordHash);
+  }
+
+  async function registerCustomer({ fullName, phone, city, line1, username, password }) {
+    const cleanFullName = String(fullName || "").trim();
+    const cleanPhone = String(phone || "").trim();
+    const cleanCity = String(city || "").trim() || "Ho Chi Minh City";
+    const cleanLine1 = String(line1 || "").trim() || "12 Nguyen Hue";
+    const cleanUsername = String(username || "").trim();
+    const cleanPassword = String(password || "").trim();
+    if (!cleanFullName || !cleanPhone || !cleanUsername || !cleanPassword) {
+      return { ok: false, error: "Full name, phone, username, and password are required." };
+    }
+
+    const normalizedPasswordHash = normalizePasswordHash(cleanPassword);
+    const address = buildDefaultAddress(cleanFullName, cleanPhone, cleanCity, cleanLine1);
+
+    if (window.storefrontApi) {
+      const response = await window.storefrontApi.registerCustomer({
+        username: cleanUsername,
+        passwordHash: normalizedPasswordHash,
+        fullName: cleanFullName,
+        phone: cleanPhone,
+        address
+      });
+      if (response.ok && response.data) {
+        const account = upsertAccount({
+          accountId: response.data.accountId || response.data.account_id,
+          username: response.data.username,
+          passwordHash: normalizedPasswordHash,
+          role: response.data.role,
+          customerId: response.data.customerId || response.data.customer_id
+        });
+        const customer = response.data.customer
+          ? upsertCustomer(response.data.customer)
+          : upsertCustomer({
+              customerId: account.customerId,
+              accountId: account.accountId,
+              fullName: cleanFullName,
+              phone: cleanPhone,
+              city: cleanCity,
+              address,
+              wishlist: []
+            });
+        const session = buildSession(account, customer);
+        writeJson(storageKeys.session, session);
+        return { ok: true, session };
+      }
+      if (response.error && response.error !== "API unavailable") {
+        return response;
+      }
+    }
+
+    const accounts = getAccounts();
+    if (accounts.some((entry) => entry.username.toLowerCase() === cleanUsername.toLowerCase())) {
+      return { ok: false, error: "Username already exists in this local session." };
+    }
+
+    const slug = slugify(cleanUsername);
+    const account = normalizeAccountRecord({
+      accountId: `account-${slug}`,
+      username: cleanUsername,
+      passwordHash: normalizedPasswordHash,
+      role: "Customer",
+      customerId: `customer-${slug}`
+    });
+    const customer = normalizeCustomerRecord({
+      customerId: account.customerId,
+      accountId: account.accountId,
+      fullName: cleanFullName,
+      phone: cleanPhone,
+      city: cleanCity,
+      address,
+      wishlist: []
+    });
+    persistAccounts([...accounts, account]);
+    persistCustomers([...getCustomers(), customer]);
+    const session = buildSession(account, customer);
+    writeJson(storageKeys.session, session);
+    return { ok: true, session };
   }
 
   function signOut() {
@@ -298,6 +499,36 @@
     };
   }
 
+  function updateCustomerRecord(customerId, updater) {
+    const customers = getCustomers();
+    const index = customers.findIndex((entry) => entry.customerId === customerId);
+    if (index < 0) {
+      return { ok: false, error: "Customer profile not found." };
+    }
+    const current = { ...customers[index], address: { ...customers[index].address }, wishlist: [...customers[index].wishlist] };
+    const updateResult = updater(current);
+    if (updateResult && updateResult.ok === false) {
+      return updateResult;
+    }
+    customers[index] = normalizeCustomerRecord(current);
+    persistCustomers(customers);
+    return { ok: true, customer: customers[index] };
+  }
+
+  function isInWishlist(productId) {
+    const customer = getCustomerProfile();
+    return Boolean(customer && customer.wishlist.includes(productId));
+  }
+
+  function getWishlistProducts() {
+    const customer = getCustomerProfile();
+    if (!customer) {
+      return [];
+    }
+    const wishlist = new Set(customer.wishlist);
+    return getProducts().filter((entry) => wishlist.has(entry.productId));
+  }
+
   function getCart() {
     return readJson(storageKeys.cart, []);
   }
@@ -349,12 +580,56 @@
 
   async function addToCartWithApi(productId, variantId, quantity) {
     if (window.storefrontApi) {
-      const response = await window.storefrontApi.addToCart(productId, variantId, quantity);
-      if (response.ok) {
-        return addToCart(productId, variantId, quantity);
+      const session = getSession();
+      if (session && session.customerId) {
+        const cartId = `cart-${session.customerId}`;
+        const response = await window.storefrontApi.addToCart(cartId, session.customerId, variantId, quantity);
+        if (response.ok || response.error === "API unavailable") {
+          return addToCart(productId, variantId, quantity);
+        }
+        return response;
       }
+      return addToCart(productId, variantId, quantity);
     }
     return addToCart(productId, variantId, quantity);
+  }
+
+  async function toggleWishlist(productId) {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Sign in first to use wishlist." };
+    }
+
+    const saved = isInWishlist(productId);
+    if (window.storefrontApi) {
+      const response = saved
+        ? await window.storefrontApi.removeFromWishlist(session.customerId, productId)
+        : await window.storefrontApi.addToWishlist(session.customerId, productId);
+      if (response.ok && response.data) {
+        return {
+          ok: true,
+          saved: !saved,
+          customer: upsertCustomer(response.data.customer || response.data)
+        };
+      }
+      if (response.error && response.error !== "API unavailable") {
+        return response;
+      }
+    }
+
+    const local = updateCustomerRecord(session.customerId, (customer) => {
+      const next = new Set(customer.wishlist);
+      if (saved) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      customer.wishlist = Array.from(next);
+    });
+    if (!local.ok) {
+      return local;
+    }
+    return { ok: true, saved: !saved, customer: local.customer };
   }
 
   function setCartQuantity(variantId, quantity) {
@@ -644,6 +919,11 @@
     getCustomerOrders,
     buildCartSummary,
     placeOrder,
-    applyStaffOrderAction
+    applyStaffOrderAction,
+    registerCustomer
   };
 })();
+    isInWishlist,
+    getWishlistProducts,
+    toggleWishlist,
+    getCart,

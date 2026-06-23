@@ -268,3 +268,36 @@
     }
   };
 })();
+    async registerCustomer({ username, passwordHash, fullName, phone, address = {} }) {
+      return request("/api/register", {
+        method: "POST",
+        body: JSON.stringify({
+          username,
+          password_hash: passwordHash,
+          full_name: fullName,
+          phone,
+          recipient_name: address.recipientName || fullName,
+          line1: address.line1 || "12 Nguyen Hue",
+          line2: address.line2 || "",
+          ward: address.ward || "Ben Nghe",
+          district: address.district || "District 1",
+          city: address.city || "Ho Chi Minh City",
+          country: address.country || "Vietnam"
+        })
+      });
+    },
+    async getCustomerProfile(customerId) {
+      return request(`/api/customers/${customerId}`);
+    },
+    async addToWishlist(customerId, productId) {
+      return request(`/api/customers/${customerId}/wishlist`, {
+        method: "POST",
+        body: JSON.stringify({ product_id: productId })
+      });
+    },
+    async removeFromWishlist(customerId, productId) {
+      return request(`/api/customers/${customerId}/wishlist/remove`, {
+        method: "POST",
+        body: JSON.stringify({ product_id: productId })
+      });
+    },

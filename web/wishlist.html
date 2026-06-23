@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Store Manage | Wishlist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260623">
+</head>
+<body class="catalog-body">
+  <header class="site-header">
+    <a class="brand" href="index.html">Store Manage</a>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="product.html">Product</a>
+      <a href="cart.html">Cart</a>
+      <a href="login.html" data-auth-link>Sign In</a>
+    </nav>
+  </header>
+
+  <main class="orders-shell">
+    <section class="dashboard-heading">
+      <p class="eyebrow">Wishlist</p>
+      <h1>Saved Products</h1>
+      <p id="wishlist-session" class="status"></p>
+      <p id="wishlist-status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section id="wishlist-empty" class="payment-card" hidden>
+      <p class="summary-card-title">Wishlist Is Empty</p>
+      <p class="payment-meta">Save products from the product page and they will appear here for this session.</p>
+      <div class="confirmation-actions">
+        <a class="button primary" href="product.html">Browse Product</a>
+        <a class="button" href="cart.html">Open Cart</a>
+      </div>
+    </section>
+
+    <section id="wishlist-list" class="wishlist-list"></section>
+  </main>
+
+  <script src="assets/js/storefront-data.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api-client.js"></script>
+  <script src="assets/js/storefront-state.js"></script>
+  <script src="session-shell.js"></script>
+  <script src="assets/js/wishlist.js"></script>
+</body>
+</html>

@@ -55,6 +55,36 @@
         </form>
         <div id="role-hints" class="role-hints"></div>
         <p id="status" class="status" aria-live="polite"></p>
+
+        <div class="panel-divider"><span>Or create a new customer account</span></div>
+        <form id="register-form" class="login-form register-form">
+          <label>
+            <span>Full Name</span>
+            <input type="text" name="full_name" autocomplete="name" placeholder="Nguyen Van B" required>
+          </label>
+          <label>
+            <span>Phone</span>
+            <input type="text" name="phone" autocomplete="tel" placeholder="0901234567" required>
+          </label>
+          <label>
+            <span>City</span>
+            <input type="text" name="city" autocomplete="address-level2" placeholder="Ho Chi Minh City">
+          </label>
+          <label>
+            <span>Address Line 1</span>
+            <input type="text" name="line1" autocomplete="address-line1" placeholder="12 Nguyen Hue">
+          </label>
+          <label>
+            <span>Username</span>
+            <input type="text" name="username" autocomplete="username" placeholder="client002" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" autocomplete="new-password" placeholder="123456" required>
+          </label>
+          <button class="button full-width" type="submit">Register Customer Account</button>
+        </form>
+        <p id="register-status" class="status" aria-live="polite"></p>
       </section>
     </section>
   </main>

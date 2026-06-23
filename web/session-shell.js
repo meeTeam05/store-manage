@@ -23,7 +23,9 @@
 
   const role = String(session.role);
   const currentPage = window.location.pathname.split("/").pop() || "index.html";
-  const showOrdersLink = (role === "Customer" || role === "0") && currentPage !== "orders.html";
+  const isCustomer = role === "Customer" || role === "0";
+  const showWishlistLink = isCustomer && currentPage !== "wishlist.html";
+  const showOrdersLink = isCustomer && currentPage !== "orders.html";
   const workspaceLink = (role === "Admin" || role === "3")
     ? "admin.html"
     : (role === "Staff" || role === "Manager" || role === "1" || role === "2" ? "staff.html" : null);
@@ -32,6 +34,7 @@
   shell.id = "nav-session-shell";
   shell.className = "nav-session";
   shell.innerHTML = `
+    ${showWishlistLink ? '<a class="nav-aux" href="wishlist.html">Wishlist</a>' : ""}
     ${showOrdersLink ? '<a class="nav-aux" href="orders.html">My Orders</a>' : ""}
     ${workspaceLink && workspaceLink !== currentPage ? `<a class="nav-aux" href="${workspaceLink}">Workspace</a>` : ""}
     <span class="nav-user">${session.displayName || session.customerName || session.username} / ${role}</span>

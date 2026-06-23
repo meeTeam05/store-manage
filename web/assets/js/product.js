@@ -55,6 +55,19 @@
 
   renderOptions();
 
+  function renderWishlistButton() {
+    const session = window.storefrontState.getSession();
+    if (!session || !session.customerId) {
+      wishlistButton.textContent = "Sign In To Save";
+      wishlistButton.href = "login.html?returnTo=product.html";
+      return;
+    }
+
+    const saved = window.storefrontState.isInWishlist(product.productId);
+    wishlistButton.textContent = saved ? "Remove From Wishlist" : "Save To Wishlist";
+    wishlistButton.href = "wishlist.html";
+  }
+
   addToCartButton.addEventListener("click", async () => {
     const variant = findVariant();
     if (!variant) {
@@ -67,11 +80,22 @@
       : result.error;
   });
 
-  wishlistButton.addEventListener("click", (event) => {
-    event.preventDefault();
+  wishlistButton.addEventListener("click", async (event) => {
     const session = window.storefrontState.getSession();
-    status.textContent = session
-      ? `Saved to wishlist for ${session.customerName} in demo mode.`
-      : "Sign in first to use wishlist.";
+    if (!session || !session.customerId) {
+      return;
+    }
+    event.preventDefault();
+    const result = await window.storefrontState.toggleWishlist(product.productId);
+    if (!result.ok) {
+      status.textContent = result.error;
+      return;
+    }
+    renderWishlistButton();
+    status.textContent = result.saved
+      ? `Saved ${product.name} to wishlist. Open Wishlist from the top navigation.`
+      : `Removed ${product.name} from wishlist.`;
   });
+
+  renderWishlistButton();
 })();
