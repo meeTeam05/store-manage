@@ -46,9 +46,7 @@
     const image = product.images && product.images.length > 0 ? product.images[0] : "";
     return `
       <a class="product-card" href="product.html?id=${encodeURIComponent(product.productId)}">
-        <div class="product-card-img-wrap">
-          <img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}">
-        </div>
+        <img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}">
         <div>
           <h3>${escapeHtml(product.name)}</h3>
           <p>${escapeHtml(productSummary(product))}</p>
