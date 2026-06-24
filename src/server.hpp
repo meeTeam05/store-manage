@@ -1181,7 +1181,14 @@ inline void setup_server(
             pstatus_from(b.str("status", "Active"))
         };
         auto result = store_mgmt_svc.create_product(draft);
-        if (!result) { json_err(res, 400, "Create product failed"); return; }
+        if (!result) {
+            if (result.error() == staff::StoreManagementError::ProductAlreadyExists) {
+                json_err(res, 409, "Product ID already exists");
+                return;
+            }
+            json_err(res, 400, "Create product failed");
+            return;
+        }
         save_product_images(draft.id, b.str("image_urls_text"));
         json_ok(res, ser_product_with_storefront(result.value()));
     });
