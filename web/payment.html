@@ -29,7 +29,25 @@
         </p>
 
         <div id="payment-info" class="info-grid"></div>
+        <section id="bank-transfer-qr" class="bank-qr-card" hidden>
+          <div class="bank-qr-content">
+            <div>
+              <p class="summary-card-title">Bank Transfer QR</p>
+              <p class="payment-meta">
+                Scan this QR code to complete the bank transfer for your local test order.
+              </p>
+              <p class="payment-meta">
+                Transfer content: <strong id="bank-transfer-note">BANK-TRANSFER-DEMO</strong>
+              </p>
+            </div>
 
+            <img
+              class="bank-qr-image"
+              src="assets/img/bank-transfer-qr.png"
+              alt="Bank transfer QR code"
+            >
+          </div>
+        </section>
         <form id="payment-form" class="payment-form">
           <div class="payment-option-list">
             <label class="payment-option">

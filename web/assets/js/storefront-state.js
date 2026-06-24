@@ -1059,19 +1059,30 @@
     return { ok: true, voucher: next };
   }
 
+  function calculateNetRevenueMinor(orders) {
+    return (orders || []).reduce((total, order) => {
+      const paymentStatus = String(order.paymentStatus || "").toLowerCase();
+      const orderStatus = String(order.orderStatus || "").toLowerCase();
+
+      const isPaid = paymentStatus === "paid";
+      const isCancelled = orderStatus === "cancelled" || orderStatus === "canceled";
+
+      if (!isPaid || isCancelled) {
+        return total;
+      }
+
+      const gross = Number(order.totalMinor || 0);
+      const refunded = Number(order.refundedMinor || 0);
+
+      return total + Math.max(0, gross - refunded);
+    }, 0);
+  }
+
   function getAdminReport() {
     const products = getProducts();
     const orders = getOrders();
     const voucher = getVoucher();
-    const revenueMinor = orders.reduce((sum, order) => {
-      if (order.paymentStatus === "Refunded") {
-        return sum - order.totalMinor;
-      }
-      if (order.paymentStatus === "Paid") {
-        return sum + order.totalMinor;
-      }
-      return sum;
-    }, 0);
+    const revenueMinor = calculateNetRevenueMinor(orders);
 
     const quantitiesByProduct = new Map();
     orders

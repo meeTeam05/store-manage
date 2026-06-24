@@ -551,6 +551,13 @@
   async function render() {
     await loadProducts();
     await loadAccounts();
+    // Ensure admin view merges live backend orders into local storage when available
+    if (window.storefrontState.loadStaffOrdersWithApi) {
+      const ordersResult = await window.storefrontState.loadStaffOrdersWithApi();
+      if (!ordersResult.ok && ordersResult.error !== "API unavailable") {
+        setFeedback(false, ordersResult.error);
+      }
+    }
     const voucher = window.storefrontState.getVoucher();
     const report = window.storefrontState.getAdminReport();
     renderOverview(report, accountsCache.length);

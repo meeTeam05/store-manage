@@ -34,7 +34,10 @@
   const confirmationItems = document.getElementById("confirmation-items");
   const recentOrdersShell = document.getElementById("recent-orders-shell");
   const recentOrders = document.getElementById("recent-orders");
-
+  const bankQrBlock = document.getElementById("bank-transfer-qr");
+  const bankQrNote = document.getElementById("bank-transfer-note");
+  const confirmationQrBlock = document.getElementById("bank-transfer-confirmation-qr");
+  const confirmationQrNote = document.getElementById("bank-transfer-confirmation-note");
   function renderRecentOrders() {
     const orders = window.storefrontState.getCustomerOrders().slice(0, 3);
     if (orders.length === 0) {
@@ -53,6 +56,8 @@
   }
 
   function renderConfirmation(order, backendMessage) {
+    const isBankTransfer = order.paymentMethod === "BankTransfer";
+    const transferReference = order.paymentReference || `BANK-${order.orderNumber}`;
     const referenceBlock = order.paymentReference ? `
       <article>
         <span>Reference</span>
@@ -60,6 +65,13 @@
       </article>
     ` : "";
     confirmationBlock.hidden = false;
+    if (confirmationQrBlock) {
+      confirmationQrBlock.hidden = !isBankTransfer;
+    }
+
+    if (confirmationQrNote) {
+      confirmationQrNote.textContent = transferReference;
+    }
     confirmationInfo.innerHTML = `
       <article>
         <span>Order</span>
@@ -90,7 +102,36 @@
       </article>
     `).join("");
   }
+  function getSelectedPaymentMethod() {
+    return String(
+      document.querySelector('input[name="payment-method"]:checked')?.value || "Cash"
+    );
+  }
 
+  function updateBankTransferQr(referenceText = "BANK-TRANSFER-DEMO") {
+    const selectedMethod = getSelectedPaymentMethod();
+    const shouldShowQr = selectedMethod === "BankTransfer";
+
+    if (bankQrBlock) {
+      bankQrBlock.hidden = !shouldShowQr;
+    }
+
+    if (bankQrNote) {
+      bankQrNote.textContent = referenceText;
+    }
+  }
+
+  function setupBankTransferQr() {
+    const paymentMethods = document.querySelectorAll('input[name="payment-method"]');
+
+    paymentMethods.forEach((input) => {
+      input.addEventListener("change", () => {
+        updateBankTransferQr();
+      });
+    });
+
+    updateBankTransferQr();
+  }
   infoContainer.innerHTML = `
     <article>
       <span>Customer</span>
@@ -132,6 +173,7 @@
   totalElement.textContent = window.storefrontState.formatMoney(summary.totalMinor);
   renderRecentOrders();
 
+  setupBankTransferQr();
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(form);
