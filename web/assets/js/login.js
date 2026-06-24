@@ -1,28 +1,7 @@
 const form = document.getElementById("login-form");
 const statusElement = document.getElementById("status");
-const roleHintsElement = document.getElementById("role-hints");
 const registerForm = document.getElementById("register-form");
 const registerStatusElement = document.getElementById("register-status");
-
-if (roleHintsElement) {
-  roleHintsElement.innerHTML = `
-    <article class="role-card">
-      <strong>Customer</strong>
-      <span>Username: client001</span>
-      <span>Password: 123456</span>
-    </article>
-    <article class="role-card">
-      <strong>Staff</strong>
-      <span>Username: staff001</span>
-      <span>Password: staff123</span>
-    </article>
-    <article class="role-card">
-      <strong>Admin</strong>
-      <span>Username: admin001</span>
-      <span>Password: admin123</span>
-    </article>
-  `;
-}
 
 function targetPathForRole(role) {
   if (role === "Admin" || role === 3) {
