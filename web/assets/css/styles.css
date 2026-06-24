@@ -527,7 +527,7 @@ h3 {
   transition: all 0.2s ease;
 }
 
-.chip:hover {
+.chip:not([disabled]):hover {
   border-color: var(--border-strong);
   background: var(--bg-subtle);
 }
@@ -536,6 +536,15 @@ h3 {
   background: var(--border-strong);
   color: var(--bg);
   border-color: var(--border-strong);
+}
+
+.chip[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-soft);
+  text-decoration: line-through;
 }
 
 .product-actions {

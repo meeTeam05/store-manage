@@ -42,13 +42,16 @@
     <img src="${escapeHtml(src)}" alt="${escapeHtml(product.name)} view ${index + 1}">
   `).join("");
 
-  function renderChips(row, values, selected, onSelect) {
-    row.innerHTML = values.map((value) => `
-      <button class="chip ${value === selected ? "is-active" : ""}" type="button" data-value="${escapeHtml(value)}">
-        ${escapeHtml(value)}
-      </button>
-    `).join("");
-    row.querySelectorAll("[data-value]").forEach((button) => {
+  function renderChips(row, values, selected, disabledValues = [], onSelect) {
+    row.innerHTML = values.map((value) => {
+      const isDisabled = disabledValues.includes(value);
+      return `
+        <button class="chip ${value === selected ? "is-active" : ""}" type="button" data-value="${escapeHtml(value)}" ${isDisabled ? "disabled" : ""}>
+          ${escapeHtml(value)}
+        </button>
+      `;
+    }).join("");
+    row.querySelectorAll("[data-value]:not([disabled])").forEach((button) => {
       button.addEventListener("click", () => onSelect(String(button.dataset.value || "")));
     });
   }
@@ -63,15 +66,21 @@
       return;
     }
     const sizes = [...new Set(variants.map((entry) => entry.size))];
-    const colors = [...new Set(variants.filter((entry) => entry.size === selectedVariant.size).map((entry) => entry.color))];
-    renderChips(sizeRow, sizes, selectedVariant.size, (size) => {
+    const colors = [...new Set(variants.map((entry) => entry.color))];
+
+    const disabledSizes = sizes.filter((size) => !variants.some((entry) => entry.size === size && entry.color === selectedVariant.color));
+    const disabledColors = colors.filter((color) => !variants.some((entry) => entry.color === color && entry.size === selectedVariant.size));
+
+    renderChips(sizeRow, sizes, selectedVariant.size, disabledSizes, (size) => {
       selectedVariant = variants.find((entry) => entry.size === size && entry.color === selectedVariant.color)
         || variants.find((entry) => entry.size === size)
         || selectedVariant;
       renderOptions();
     });
-    renderChips(colorRow, colors, selectedVariant.color, (color) => {
-      selectedVariant = variants.find((entry) => entry.size === selectedVariant.size && entry.color === color) || selectedVariant;
+    renderChips(colorRow, colors, selectedVariant.color, disabledColors, (color) => {
+      selectedVariant = variants.find((entry) => entry.size === selectedVariant.size && entry.color === color)
+        || variants.find((entry) => entry.color === color)
+        || selectedVariant;
       renderOptions();
     });
     price.textContent = window.storefrontState.formatMoney(selectedVariant.priceMinor || product.priceMinor);
