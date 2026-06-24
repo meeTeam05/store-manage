@@ -1,0 +1,2 @@
+E "employee-001"	"account-002"	"Store Staff"	"Operations Staff"
+E "employee-002"	"account-003"	"System Admin"	"Administrator"

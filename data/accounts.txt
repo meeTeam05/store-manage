@@ -1,0 +1,4 @@
+A "account-001"	"client001"	"hash:123456"	0	0
+A "account-002"	"staff001"	"hash:staff123"	1	0
+A "account-003"	"admin001"	"hash:admin123"	3	0
+A "account-an"	"an"	"hash:1"	0	0

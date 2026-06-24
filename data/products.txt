@@ -1,0 +1,22 @@
+P "basic-tee-001"	"Minimal Cotton T-Shirt"	0	"Áo thun cotton tối giản, chất liệu mềm, dễ phối với quần jeans, quần short hoặc áo khoác ngoài."	"Essential 2026"	1
+V "basic-tee-001"	"variant-tee-white-m"	"TEE-WHT-M"	"M"	"White"	199000	1
+V "basic-tee-001"	"variant-tee-black-l"	"TEE-BLK-L"	"L"	"Black"	199000	1
+P "bomber-jacket-001"	"Classic Bomber Jacket"	2	"Áo khoác bomber cổ điển, thiết kế gọn gàng, dễ phối với áo thun và quần jeans."	"Urban 2026"	1
+V "bomber-jacket-001"	"variant-bomber-black-m"	"BOMBER-BLK-M"	"M"	"Black"	690000	1
+V "bomber-jacket-001"	"variant-bomber-green-l"	"BOMBER-GRN-L"	"L"	"Green"	690000	1
+P "cargo-pants-001"	"Relaxed Cargo Pants"	1	"Quần cargo form rộng, nhiều túi tiện dụng, phù hợp phong cách streetwear và dễ phối với áo thun, hoodie hoặc bomber jacket."	"Streetwear 2026"	1
+V "cargo-pants-001"	"variant-cargo-black-m"	"CARGO-BLK-M"	"M"	"Black"	520000	1
+V "cargo-pants-001"	"variant-cargo-black-l"	"CARGO-BLK-L"	"L"	"Black"	520000	1
+P "knit-sweater-001"	"Premium Knit Sweater"	0	"Áo len dệt kim mềm mại, form vừa vặn, phù hợp mặc đi học, đi chơi hoặc phối cùng áo khoác ngoài trong thời tiết se lạnh."	"Winter 2026"	1
+V "knit-sweater-001"	"variant-knit-cream-s"	"KNIT-CRM-S"	"S"	"Cream"	390000	1
+V "knit-sweater-001"	"variant-knit-cream-m"	"KNIT-CRM-M"	"M"	"Cream"	390000	1
+V "knit-sweater-001"	"variant-knit-brown-l"	"KNIT-BRN-L"	"L"	"Brown"	390000	1
+P "product-001"	"Structured Coat"	2	"Long-line black coat with quiet shoulder structure, fluid drape, and a disciplined silhouette for day-to-evening wear."	"Maison Aureline 2026"	1
+V "product-001"	"variant-001-black-s"	"COAT-BLK-S"	"S"	"Black"	4900000	1
+V "product-001"	"variant-001-black-m"	"COAT-BLK-M"	"M"	"Black"	4900000	1
+V "product-001"	"variant-001-black-l"	"COAT-BLK-L"	"L"	"Black"	4900000	1
+V "product-001"	"variant-001-ivory-s"	"COAT-IVR-S"	"S"	"Ivory"	4900000	1
+V "product-001"	"variant-001-ivory-m"	"COAT-IVR-M"	"M"	"Ivory"	4900000	1
+P "shirt-linen-001"	"Linen Relaxed Shirt"	0	"Áo sơ mi linen form thoải mái, nhẹ và thoáng, phù hợp đi học, đi chơi hoặc mặc thường ngày."	"Summer 2026"	1
+V "shirt-linen-001"	"variant-shirt-ivory-m"	"SHIRT-IVR-M"	"M"	"Ivory"	350000	1
+V "shirt-linen-001"	"variant-shirt-blue-l"	"SHIRT-BLU-L"	"L"	"Blue"	350000	1

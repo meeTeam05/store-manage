@@ -1,0 +1,3 @@
+C "customer-001"	"account-001"	"Nguyen Van A"	"0900000000"	"Nguyen Van A"	"0900000000"	"12 Nguyen Hue"	""	"Ben Nghe"	"District 1"	"Ho Chi Minh City"	"Vietnam"
+C "customer-an"	"account-an"	"Mai Vũ Bình An"	"0395948549"	"Mai Vũ Bình An"	"0395948549"	"ktx khu B"	""	"Ben Nghe"	"District 1"	"Ho Chi Minh City"	"Vietnam"
+W "customer-an"	"product-001"
