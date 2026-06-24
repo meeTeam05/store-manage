@@ -179,7 +179,7 @@
 
         <div class="admin-image-preview-list">
           ${(product.images || []).map((image, index) => `
-            <img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)} image ${index + 1}">
+            <img src="${escapeHtml(window.storefrontState.resolveProductImageUrl(image))}" alt="${escapeHtml(product.name)} image ${index + 1}">
           `).join("")}
         </div>
 

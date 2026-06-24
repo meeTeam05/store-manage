@@ -43,7 +43,7 @@
       return `
         <article class="payment-card wishlist-card">
           <div class="wishlist-card-media">
-            <img src="${product.images?.[0] || ""}" alt="${product.name}">
+            <img src="${escapeHtml(window.storefrontState.resolveProductImageUrl(product.images?.[0] || ""))}" alt="${product.name}">
           </div>
           <div class="wishlist-card-copy">
             <p class="eyebrow">${product.category}</p>

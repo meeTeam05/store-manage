@@ -39,7 +39,7 @@
   category.textContent = product.category;
   description.textContent = product.description;
   gallery.innerHTML = product.images.map((src, index) => `
-    <img src="${escapeHtml(src)}" alt="${escapeHtml(product.name)} view ${index + 1}">
+    <img src="${escapeHtml(window.storefrontState.resolveProductImageUrl(src))}" alt="${escapeHtml(product.name)} view ${index + 1}">
   `).join("");
 
   function renderChips(row, values, selected, disabledValues = [], onSelect) {

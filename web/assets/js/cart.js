@@ -21,7 +21,7 @@
       emptyState.hidden = true;
       cartItemsContainer.innerHTML = summary.items.map((item) => `
         <article class="cart-item">
-          <img src="${item.image}" alt="${item.productName}">
+          <img src="${escapeHtml(window.storefrontState.resolveProductImageUrl(item.image))}" alt="${item.productName}">
           <div class="cart-copy">
             <h2>${item.productName}</h2>
             <p>${item.color} / Size ${item.size}</p>

@@ -1453,7 +1453,16 @@
     };
   }
 
+  function resolveProductImageUrl(image) {
+    if (!image) return "";
+    if (image.startsWith("http://") || image.startsWith("https://") || image.startsWith("data:") || image.startsWith("/") || image.startsWith("assets/")) {
+      return image;
+    }
+    return "assets/images/" + image;
+  }
+
   window.storefrontState = {
+    resolveProductImageUrl,
     formatMoney,
     getSession,
     getCustomerProfile,
