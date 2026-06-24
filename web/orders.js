@@ -26,9 +26,12 @@
   const sessionElement = document.getElementById("orders-session");
   const feedbackElement = document.getElementById("orders-feedback");
   const emptyState = document.getElementById("orders-empty");
+  const notificationsShell = document.getElementById("orders-notifications-shell");
+  const notificationsList = document.getElementById("orders-notifications-list");
   const ordersList = document.getElementById("orders-list");
   let ordersCache = [];
   let ordersSource = "local";
+  let notificationsCache = [];
   let reviewsCache = [];
   const returnsByOrder = new Map();
 
@@ -133,6 +136,50 @@
         </div>
       </div>
     `;
+  }
+
+  function renderNotifications() {
+    if (!notificationsShell || !notificationsList) {
+      return;
+    }
+    if (notificationsCache.length === 0) {
+      notificationsShell.hidden = true;
+      notificationsList.innerHTML = "";
+      return;
+    }
+    notificationsShell.hidden = false;
+    notificationsList.innerHTML = notificationsCache.map((notification) => `
+      <article class="payment-item order-history-item-rich">
+        <div class="order-item-main">
+          <div>
+            <p><strong>${escapeHtml(notification.title)}</strong></p>
+            <p class="payment-meta">${escapeHtml(new Date(notification.createdAtIso).toLocaleString("vi-VN"))}</p>
+          </div>
+          <div class="order-history-status">
+            <span>${escapeHtml(notification.returnStatus || "Updated")}</span>
+            <span>${notification.isRead ? "Read" : "Unread"}</span>
+          </div>
+        </div>
+        <p class="payment-meta">${escapeHtml(notification.message)}</p>
+        ${notification.extraDetail ? `<p class="payment-meta">${escapeHtml(notification.extraDetail)}</p>` : ""}
+        ${notification.isRead ? "" : `<div class="staff-order-actions"><button class="button compact" type="button" data-mark-notification-read="${escapeHtml(notification.notificationId)}">Mark Read</button></div>`}
+      </article>
+    `).join("");
+
+    notificationsList.querySelectorAll("[data-mark-notification-read]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const notificationId = String(button.dataset.markNotificationRead || "");
+        button.disabled = true;
+        const result = window.storefrontState.markNotificationReadWithApi
+          ? await window.storefrontState.markNotificationReadWithApi(notificationId)
+          : window.storefrontState.markNotificationRead(notificationId);
+        feedbackElement.dataset.state = result.ok ? "success" : "error";
+        feedbackElement.textContent = result.ok
+          ? "Notification marked as read."
+          : result.error;
+        await render();
+      });
+    });
   }
 
   async function renderOrders(orders) {
@@ -274,6 +321,12 @@
 
   async function loadOrderRelatedState() {
     returnsByOrder.clear();
+    if (window.storefrontState.loadCustomerNotificationsWithApi) {
+      const result = await window.storefrontState.loadCustomerNotificationsWithApi();
+      notificationsCache = result.notifications || [];
+    } else {
+      notificationsCache = window.storefrontState.getCustomerNotifications ? window.storefrontState.getCustomerNotifications() : [];
+    }
     if (window.storefrontState.loadCustomerReviewsWithApi) {
       const result = await window.storefrontState.loadCustomerReviewsWithApi();
       reviewsCache = result.reviews;
@@ -294,6 +347,7 @@
   async function render() {
     await loadOrders();
     await loadOrderRelatedState();
+    renderNotifications();
     await renderOrders(ordersCache);
     if (feedbackElement && !feedbackElement.textContent) {
       feedbackElement.dataset.state = "success";

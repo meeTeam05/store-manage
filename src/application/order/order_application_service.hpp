@@ -43,6 +43,7 @@ enum class PlaceOrderError {
     CartNotFound,
     EmptyCart,
     ProductVariantNotFound,
+    ProductNotSellable,
     InventoryNotFound,
     InsufficientStock,
     VoucherNotFound,
@@ -297,6 +298,9 @@ private:
             if (!variant) {
                 return Status<PlaceOrderError>::fail(variant.error());
             }
+            if (!is_sellable(variant.value())) {
+                return Status<PlaceOrderError>::fail(PlaceOrderError::ProductNotSellable);
+            }
             auto inventory_item = load_inventory_item(item.variant_id);
             if (!inventory_item) {
                 return Status<PlaceOrderError>::fail(inventory_item.error());
@@ -345,6 +349,9 @@ private:
             auto variant = load_variant(item.variant_id);
             if (!variant) {
                 return Result<StagedOrderDraft, PlaceOrderError>::fail(variant.error());
+            }
+            if (!is_sellable(variant.value())) {
+                return Result<StagedOrderDraft, PlaceOrderError>::fail(PlaceOrderError::ProductNotSellable);
             }
 
             auto inventory_item = load_inventory_item(item.variant_id);
@@ -455,6 +462,11 @@ private:
         for (const auto& item : items) {
             inventory_repository_.save(item);
         }
+    }
+
+    static bool is_sellable(const CatalogVariantView& variant_view) {
+        return variant_view.product_status == fashion_store::domain::catalog::ProductStatus::Active &&
+               variant_view.variant.active;
     }
 
     void persist_voucher(const std::optional<Voucher>& voucher) {

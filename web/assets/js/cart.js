@@ -42,19 +42,32 @@
     totalElement.textContent = window.storefrontState.formatMoney(summary.totalMinor);
 
     cartItemsContainer.querySelectorAll("[data-action]").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         const variantId = button.dataset.variantId;
         const item = summary.items.find((entry) => entry.variantId === variantId);
         if (!item) {
           return;
         }
 
+        button.disabled = true;
         if (button.dataset.action === "increase") {
-          window.storefrontState.setCartQuantity(variantId, item.quantity + 1);
+          if (window.storefrontState.setCartQuantityWithApi) {
+            await window.storefrontState.setCartQuantityWithApi(variantId, item.quantity + 1);
+          } else {
+            window.storefrontState.setCartQuantity(variantId, item.quantity + 1);
+          }
         } else if (button.dataset.action === "decrease") {
-          window.storefrontState.setCartQuantity(variantId, item.quantity - 1);
+          if (window.storefrontState.setCartQuantityWithApi) {
+            await window.storefrontState.setCartQuantityWithApi(variantId, item.quantity - 1);
+          } else {
+            window.storefrontState.setCartQuantity(variantId, item.quantity - 1);
+          }
         } else {
-          window.storefrontState.removeFromCart(variantId);
+          if (window.storefrontState.removeFromCartWithApi) {
+            await window.storefrontState.removeFromCartWithApi(variantId);
+          } else {
+            window.storefrontState.removeFromCart(variantId);
+          }
         }
         render();
       });

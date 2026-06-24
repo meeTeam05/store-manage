@@ -16,6 +16,7 @@ using fashion_store::domain::shared::VariantId;
 
 enum class CartServiceError {
     ProductVariantNotFound,
+    ProductNotSellable,
     CartRuleViolation
 };
 
@@ -32,6 +33,9 @@ public:
         if (!variant_view.has_value()) {
             return Result<Cart, CartServiceError>::fail(CartServiceError::ProductVariantNotFound);
         }
+        if (!is_sellable(*variant_view)) {
+            return Result<Cart, CartServiceError>::fail(CartServiceError::ProductNotSellable);
+        }
 
         auto cart = cart_repository_.find_by_id(cart_id).value_or(Cart(cart_id, customer_id));
         auto add_result = cart.add_item(variant_id, quantity, variant_view->variant.price);
@@ -41,6 +45,10 @@ public:
 
         cart_repository_.save(cart);
         return Result<Cart, CartServiceError>::ok(cart);
+    }
+
+    std::optional<Cart> find_cart(const CartId& cart_id) const {
+        return cart_repository_.find_by_id(cart_id);
     }
 
     Result<Cart, CartServiceError> get_or_create_cart(const CartId& cart_id, const CustomerId& customer_id) {
@@ -78,6 +86,11 @@ public:
     }
 
 private:
+    static bool is_sellable(const fashion_store::domain::catalog::CatalogVariantView& variant_view) {
+        return variant_view.product_status == fashion_store::domain::catalog::ProductStatus::Active &&
+               variant_view.variant.active;
+    }
+
     ICartRepository& cart_repository_;
     IProductRepository& product_repository_;
 };
