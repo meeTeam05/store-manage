@@ -199,14 +199,6 @@
           </div>
 
           <div class="staff-order-actions">
-            <label class="admin-field admin-field-full">
-              <span>Staff Note</span>
-              <textarea rows="2" placeholder="Reason, update, or closure note" data-return-note></textarea>
-            </label>
-            <label class="admin-field">
-              <span>Refund Reference</span>
-              <input type="text" placeholder="BANK-REF-001" data-refund-reference>
-            </label>
             ${actions.map((action) => `
               <button
                 class="button compact ${action.primary ? "primary" : ""}"
