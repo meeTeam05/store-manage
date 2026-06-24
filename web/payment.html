@@ -23,9 +23,9 @@
     <section class="payment-layout">
       <section class="payment-card">
         <p class="eyebrow">Payment</p>
-        <h1>Confirm payment before placing the local test order.</h1>
+        <h1>Confirm payment before placing your order.</h1>
         <p class="payment-lead">
-          This step stays inside the local shell so you can validate the customer flow without a live backend.
+          Review your selection and choose the payment method that fits this order.
         </p>
 
         <div id="payment-info" class="info-grid"></div>
@@ -34,10 +34,10 @@
             <div>
               <p class="summary-card-title">Bank Transfer QR</p>
               <p class="payment-meta">
-                Scan this QR code to complete the bank transfer for your local test order.
+                Scan this QR code to complete your bank transfer.
               </p>
               <p class="payment-meta">
-                Transfer content: <strong id="bank-transfer-note">BANK-TRANSFER-DEMO</strong>
+                Transfer content: <strong id="bank-transfer-note">BANK-TRANSFER</strong>
               </p>
             </div>
 
@@ -54,7 +54,7 @@
               <input type="radio" name="payment-method" value="Cash" checked>
               <div>
                 <strong>Cash On Delivery</strong>
-                <p>Use this for the simplest local checkout path.</p>
+                <p>Pay when the order arrives.</p>
               </div>
             </label>
             <label class="payment-option">
@@ -68,17 +68,17 @@
               <input type="radio" name="payment-method" value="EWallet">
               <div>
                 <strong>E-Wallet</strong>
-                <p>Use the same local method your C++ demo flow already models.</p>
+                <p>Use a digital wallet for a quick confirmation flow.</p>
               </div>
             </label>
           </div>
 
-          <button class="button primary full-width" type="submit">Place Local Test Order</button>
+          <button class="button primary full-width" type="submit">Place Order</button>
           <p id="payment-status" class="status" aria-live="polite"></p>
         </form>
 
         <section id="payment-confirmation" class="confirmation-block" hidden>
-          <p class="summary-card-title">Local Order Created</p>
+          <p class="summary-card-title">Order Created</p>
           <div id="confirmation-info" class="info-grid"></div>
           <div id="confirmation-items" class="payment-items"></div>
           <div class="confirmation-actions">
@@ -104,7 +104,7 @@
           <span id="payment-total">0 VND</span>
         </div>
         <section id="recent-orders-shell" class="recent-orders-shell" hidden>
-          <p class="summary-card-title">Recent Local Orders</p>
+          <p class="summary-card-title">Recent Orders</p>
           <div id="recent-orders"></div>
         </section>
       </aside>

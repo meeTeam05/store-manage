@@ -31,7 +31,7 @@
     grid.innerHTML = `
       <div class="empty-state">
         <h3>No products available</h3>
-        <p>Catalog data could not be loaded from the backend or the local fallback.</p>
+        <p>Catalog data is unavailable right now. Please try again shortly.</p>
       </div>
     `;
     return;

@@ -55,7 +55,7 @@
     `).join("");
   }
 
-  function renderConfirmation(order, backendMessage) {
+  function renderConfirmation(order) {
     const isBankTransfer = order.paymentMethod === "BankTransfer";
     const transferReference = order.paymentReference || `BANK-${order.orderNumber}`;
     const referenceBlock = order.paymentReference ? `
@@ -85,10 +85,6 @@
         <span>Payment</span>
         <p>${order.paymentMethod} / ${order.paymentStatus}</p>
       </article>
-      <article>
-        <span>Backend</span>
-        <p>${backendMessage}</p>
-      </article>
       ${referenceBlock}
     `;
 
@@ -108,7 +104,7 @@
     );
   }
 
-  function updateBankTransferQr(referenceText = "BANK-TRANSFER-DEMO") {
+  function updateBankTransferQr(referenceText = "BANK-TRANSFER") {
     const selectedMethod = getSelectedPaymentMethod();
     const shouldShowQr = selectedMethod === "BankTransfer";
 
@@ -139,7 +135,7 @@
     </article>
     <article>
       <span>Delivery</span>
-      <p>${customer ? `${customer.phone}, ${customer.city}` : "Local test profile"}</p>
+      <p>${customer ? `${customer.phone}, ${customer.city}` : "Profile not available"}</p>
     </article>
   `;
 
@@ -148,7 +144,7 @@
     itemsContainer.innerHTML = `
       <article class="recent-order-card">
         <p><strong>No active cart items.</strong></p>
-        <p class="payment-meta">Your latest local orders are shown below. Add a product to create another test order.</p>
+        <p class="payment-meta">Your recent orders are shown below. Add a product to create another order.</p>
       </article>
     `;
     subtotalElement.textContent = window.storefrontState.formatMoney(0);
@@ -187,14 +183,14 @@
       statusElement.dataset.state = "error";
       statusElement.textContent = result.error;
       submitButton.disabled = false;
-      submitButton.textContent = "Place Local Test Order";
+      submitButton.textContent = "Place Order";
       return;
     }
 
     statusElement.dataset.state = "success";
     statusElement.textContent = `${result.order.orderNumber} created with ${paymentMethod}.`;
     submitButton.textContent = "Order Submitted";
-    renderConfirmation(result.order, result.backendMessage);
+    renderConfirmation(result.order);
     renderRecentOrders();
     itemsContainer.innerHTML = "";
     subtotalElement.textContent = window.storefrontState.formatMoney(0);

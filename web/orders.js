@@ -351,9 +351,7 @@
     await renderOrders(ordersCache);
     if (feedbackElement && !feedbackElement.textContent) {
       feedbackElement.dataset.state = "success";
-      feedbackElement.textContent = ordersSource === "api"
-        ? "Loaded your current backend orders."
-        : "Showing local session orders.";
+      feedbackElement.textContent = "Orders updated.";
     }
   }
 
