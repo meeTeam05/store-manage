@@ -157,5 +157,92 @@
         "quantity": 6
       }
     ]
+  },
+  {
+    "id": "product-004",
+    "name": "Classic Chino Pant",
+    "category": "Bottoms",
+    "description": "Everyday-ready relaxed chino pant crafted from premium cotton twill, offering absolute comfort and versatility.",
+    "collection": "Everyday Essentials",
+    "images": [
+      "bottoms_1.jpg",
+      "bottoms_2.jpg"
+    ],
+    "variants": [
+      {
+        "id": "variant-004-khaki-m",
+        "sku": "MA-BTM-004-KHK-M",
+        "size": "M",
+        "color": "Khaki",
+        "price": 3200000,
+        "quantity": 10
+      },
+      {
+        "id": "variant-004-olive-l",
+        "sku": "MA-BTM-004-OLV-L",
+        "size": "L",
+        "color": "Olive",
+        "price": 3200000,
+        "quantity": 8
+      }
+    ]
+  },
+  {
+    "id": "product-005",
+    "name": "Minimalist Leather Sneakers",
+    "category": "Shoes",
+    "description": "Clean, understated white leather sneakers with matching stitching, comfortable rubber cupsole, and subtle brand stamp.",
+    "collection": "Everyday Essentials",
+    "images": [
+      "shoes_1.jpg",
+      "shoes_2.jpg"
+    ],
+    "variants": [
+      {
+        "id": "variant-005-white-41",
+        "sku": "SNEAK-WHT-41",
+        "size": "41",
+        "color": "White",
+        "price": 4200000,
+        "quantity": 5
+      },
+      {
+        "id": "variant-005-white-42",
+        "sku": "SNEAK-WHT-42",
+        "size": "42",
+        "color": "White",
+        "price": 4200000,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "id": "product-006",
+    "name": "Essential Leather Belt",
+    "category": "Accessories",
+    "description": "Timeless leather belt in smooth calfskin with a brushed silver buckle, perfect for both tailoring and denim.",
+    "collection": "Everyday Essentials",
+    "images": [
+      "accessories_1.jpg",
+      "accessories_2.jpg"
+    ],
+    "variants": [
+      {
+        "id": "variant-006-black-90",
+        "sku": "BELT-BLK-90",
+        "size": "90",
+        "color": "Black",
+        "price": 1200000,
+        "quantity": 15
+      },
+      {
+        "id": "variant-006-brown-95",
+        "sku": "BELT-BRN-95",
+        "size": "95",
+        "color": "Brown",
+        "price": 1200000,
+        "quantity": 12
+      }
+    ]
   }
 ]
