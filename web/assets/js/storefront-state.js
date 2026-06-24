@@ -29,7 +29,10 @@
     products: "fashion_store_products",
     voucher: "fashion_store_voucher",
     accounts: "fashion_store_accounts",
-    customers: "fashion_store_customers"
+    customers: "fashion_store_customers",
+    employees: "fashion_store_employees",
+    reviews: "fashion_store_reviews",
+    returns: "fashion_store_returns"
   };
   const productImageFallbacks = {
     Outerwear: [
@@ -200,6 +203,55 @@
     };
   }
 
+  function normalizeAccountStatus(status) {
+    return status === "Locked" ? "Locked" : "Active";
+  }
+
+  function normalizeEmployeeRecord(employee) {
+    return {
+      employeeId: String(employee?.employeeId || employee?.employee_id || "").trim(),
+      accountId: String(employee?.accountId || employee?.account_id || "").trim(),
+      fullName: String(employee?.fullName || employee?.full_name || "").trim(),
+      position: String(employee?.position || "").trim()
+    };
+  }
+
+  function normalizeReviewRecord(review, fallback = {}) {
+    return {
+      reviewId: String(review?.reviewId || review?.review_id || fallback.reviewId || "").trim(),
+      orderId: String(review?.orderId || review?.order_id || fallback.orderId || "").trim(),
+      customerId: String(review?.customerId || review?.customer_id || fallback.customerId || "").trim(),
+      productId: String(review?.productId || review?.product_id || fallback.productId || "").trim(),
+      variantId: String(review?.variantId || review?.variant_id || fallback.variantId || "").trim(),
+      rating: Math.min(5, Math.max(1, normalizeMoney(review?.rating, fallback.rating || 5))),
+      comment: String(review?.comment || fallback.comment || "").trim(),
+      createdAtIso: String(review?.createdAtIso || review?.created_at || fallback.createdAtIso || new Date().toISOString())
+    };
+  }
+
+  function normalizeReturnStatus(status) {
+    return ["Requested", "Approved", "Rejected", "Restocked", "Refunded", "Closed"].includes(status)
+      ? status
+      : "Requested";
+  }
+
+  function normalizeReturnRecord(request, fallback = {}) {
+    return {
+      returnId: String(request?.returnId || request?.return_id || fallback.returnId || "").trim(),
+      orderId: String(request?.orderId || request?.order_id || fallback.orderId || "").trim(),
+      orderItemId: String(request?.orderItemId || request?.order_item_id || fallback.orderItemId || "").trim(),
+      customerId: String(request?.customerId || request?.customer_id || fallback.customerId || "").trim(),
+      productId: String(request?.productId || request?.product_id || fallback.productId || "").trim(),
+      variantId: String(request?.variantId || request?.variant_id || fallback.variantId || "").trim(),
+      productName: String(request?.productName || request?.product_name || fallback.productName || "Unknown Product").trim(),
+      quantity: Math.max(1, normalizeMoney(request?.quantity, fallback.quantity || 1)),
+      reason: String(request?.reason || fallback.reason || "").trim(),
+      status: normalizeReturnStatus(request?.status || fallback.status),
+      createdAtIso: String(request?.createdAtIso || request?.created_at || fallback.createdAtIso || new Date().toISOString()),
+      updatedAtIso: String(request?.updatedAtIso || request?.updated_at || fallback.updatedAtIso || request?.createdAtIso || fallback.createdAtIso || new Date().toISOString())
+    };
+  }
+
   function formatMoney(minor) {
     return new Intl.NumberFormat("vi-VN").format(minor) + " VND";
   }
@@ -251,6 +303,7 @@
       username: String(account?.username || fallback.username || "").trim(),
       passwordHash: String(account?.passwordHash || account?.password_hash || fallback.passwordHash || "").trim(),
       role: account?.role ?? fallback.role ?? "Customer",
+      status: normalizeAccountStatus(account?.status || fallback.status),
       customerId: account?.customerId ?? account?.customer_id ?? fallback.customerId ?? null,
       employeeId: account?.employeeId ?? account?.employee_id ?? fallback.employeeId ?? null
     };
@@ -264,6 +317,17 @@
   function persistAccounts(accounts) {
     const normalized = (accounts || []).map((entry) => normalizeAccountRecord(entry));
     writeJson(storageKeys.accounts, normalized);
+    return normalized;
+  }
+
+  function getEmployees() {
+    const seed = cloneData(window.storefrontData.employees || []);
+    return (readJson(storageKeys.employees, seed) || []).map((entry) => normalizeEmployeeRecord(entry));
+  }
+
+  function persistEmployees(employees) {
+    const normalized = (employees || []).map((entry) => normalizeEmployeeRecord(entry));
+    writeJson(storageKeys.employees, normalized);
     return normalized;
   }
 
@@ -312,12 +376,30 @@
     return next;
   }
 
+  function upsertEmployee(rawEmployee) {
+    const employees = getEmployees();
+    const index = employees.findIndex((entry) =>
+      entry.employeeId === (rawEmployee?.employeeId || rawEmployee?.employee_id || "") ||
+      entry.accountId === (rawEmployee?.accountId || rawEmployee?.account_id || "")
+    );
+    const current = index >= 0 ? employees[index] : {};
+    const next = normalizeEmployeeRecord({ ...current, ...rawEmployee });
+    if (index >= 0) {
+      employees[index] = next;
+    } else {
+      employees.push(next);
+    }
+    persistEmployees(employees);
+    return next;
+  }
+
   function buildSession(account, customer) {
-    const employee = (window.storefrontData.employees || []).find((entry) => entry.employeeId === account.employeeId);
+    const employee = getEmployees().find((entry) => entry.employeeId === account.employeeId);
     return {
       accountId: account.accountId,
       username: account.username,
       role: account.role,
+      status: account.status,
       customerId: account.customerId,
       employeeId: account.employeeId,
       displayName: customer ? customer.fullName : (employee ? employee.fullName : account.username),
@@ -357,6 +439,9 @@
     if (!account) {
       return { ok: false, error: "Invalid credentials for demo account." };
     }
+    if (account.status === "Locked") {
+      return { ok: false, error: "This account is locked." };
+    }
 
     const customer = getCustomers().find(
       (entry) => entry.customerId === account.customerId
@@ -376,6 +461,7 @@
           username: response.data.username,
           passwordHash: normalizedPasswordHash,
           role: response.data.role,
+          status: response.data.status || "Active",
           customerId: response.data.customerId || response.data.customer_id
         });
         const customer = response.data.customer ? upsertCustomer(response.data.customer) : (
@@ -453,6 +539,7 @@
       username: cleanUsername,
       passwordHash: normalizedPasswordHash,
       role: "Customer",
+      status: "Active",
       customerId: `customer-${slug}`
     });
     const customer = normalizeCustomerRecord({
@@ -875,6 +962,513 @@
     customers[index] = normalizeCustomerRecord(current);
     persistCustomers(customers);
     return { ok: true, customer: customers[index] };
+  }
+
+  function updateAccountRecord(accountId, updater) {
+    const accounts = getAccounts();
+    const index = accounts.findIndex((entry) => entry.accountId === accountId);
+    if (index < 0) {
+      return { ok: false, error: "Account not found." };
+    }
+    const current = { ...accounts[index] };
+    const updateResult = updater(current);
+    if (updateResult && updateResult.ok === false) {
+      return updateResult;
+    }
+    accounts[index] = normalizeAccountRecord(current, accounts[index]);
+    persistAccounts(accounts);
+    return { ok: true, account: accounts[index] };
+  }
+
+  function getManagedAccounts() {
+    const customersByAccount = new Map(getCustomers().map((customer) => [customer.accountId, customer]));
+    const employeesByAccount = new Map(getEmployees().map((employee) => [employee.accountId, employee]));
+    return getAccounts()
+      .map((account) => {
+        const customer = customersByAccount.get(account.accountId) || null;
+        const employee = employeesByAccount.get(account.accountId) || null;
+        return {
+          ...account,
+          displayName: customer?.fullName || employee?.fullName || account.username,
+          position: employee?.position || null
+        };
+      })
+      .sort((left, right) => left.username.localeCompare(right.username, "en"));
+  }
+
+  function createManagedAccount({ role, username, password, fullName }) {
+    const nextRole = String(role || "").trim();
+    if (!["Staff", "Admin"].includes(nextRole)) {
+      return { ok: false, error: "Admin can only create Staff or Admin accounts in local demo." };
+    }
+    const cleanUsername = String(username || "").trim();
+    const cleanPassword = String(password || "").trim();
+    const cleanFullName = String(fullName || "").trim();
+    if (!cleanUsername || !cleanPassword || !cleanFullName) {
+      return { ok: false, error: "Full name, username, and password are required." };
+    }
+
+    const accounts = getAccounts();
+    if (accounts.some((entry) => entry.username.toLowerCase() === cleanUsername.toLowerCase())) {
+      return { ok: false, error: "Username already exists in this local session." };
+    }
+
+    const slug = slugify(cleanUsername);
+    let accountId = `account-${slug}`;
+    let employeeId = `employee-${slug}`;
+    let suffix = 1;
+    const employees = getEmployees();
+    while (accounts.some((entry) => entry.accountId === accountId) || employees.some((entry) => entry.employeeId === employeeId)) {
+      suffix += 1;
+      accountId = `account-${slug}-${suffix}`;
+      employeeId = `employee-${slug}-${suffix}`;
+    }
+
+    const account = normalizeAccountRecord({
+      accountId,
+      username: cleanUsername,
+      passwordHash: normalizePasswordHash(cleanPassword),
+      role: nextRole,
+      status: "Active",
+      employeeId
+    });
+    const employee = normalizeEmployeeRecord({
+      employeeId,
+      accountId,
+      fullName: cleanFullName,
+      position: nextRole === "Admin" ? "Administrator" : "Operations Staff"
+    });
+
+    persistAccounts([...accounts, account]);
+    persistEmployees([...employees, employee]);
+    return {
+      ok: true,
+      account: {
+        ...account,
+        displayName: employee.fullName,
+        position: employee.position
+      }
+    };
+  }
+
+  function setManagedAccountStatus(accountId, status) {
+    const nextStatus = normalizeAccountStatus(status);
+    const result = updateAccountRecord(accountId, (account) => {
+      account.status = nextStatus;
+    });
+    if (!result.ok) {
+      return result;
+    }
+    const session = getSession();
+    if (session && session.accountId === accountId && nextStatus === "Locked") {
+      signOut();
+    }
+    return result;
+  }
+
+  function resetManagedAccountPassword(accountId, password) {
+    const cleanPassword = String(password || "").trim();
+    if (!cleanPassword) {
+      return { ok: false, error: "Password is required." };
+    }
+    return updateAccountRecord(accountId, (account) => {
+      account.passwordHash = normalizePasswordHash(cleanPassword);
+    });
+  }
+
+  function getReviews() {
+    const rawReviews = readJson(storageKeys.reviews, []);
+    const normalized = (Array.isArray(rawReviews) ? rawReviews : []).map((entry) => normalizeReviewRecord(entry));
+    writeJson(storageKeys.reviews, normalized);
+    return normalized.sort((left, right) => new Date(right.createdAtIso).getTime() - new Date(left.createdAtIso).getTime());
+  }
+
+  function persistReviews(reviews) {
+    const normalized = (Array.isArray(reviews) ? reviews : []).map((entry) => normalizeReviewRecord(entry));
+    writeJson(storageKeys.reviews, normalized);
+    return normalized;
+  }
+
+  function persistReviewRecord(review) {
+    const reviews = getReviews();
+    const normalized = normalizeReviewRecord(review);
+    const next = [normalized, ...reviews.filter((entry) => entry.reviewId !== normalized.reviewId)];
+    persistReviews(next);
+    return normalized;
+  }
+
+  function getCustomerReviews() {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return [];
+    }
+    return getReviews().filter((entry) => entry.customerId === session.customerId);
+  }
+
+  function canReviewOrder(order) {
+    return ["Delivered", "Completed"].includes(normalizeOrderStatus(order?.orderStatus));
+  }
+
+  function getReturns() {
+    const rawReturns = readJson(storageKeys.returns, []);
+    const normalized = (Array.isArray(rawReturns) ? rawReturns : []).map((entry) => normalizeReturnRecord(entry));
+    writeJson(storageKeys.returns, normalized);
+    return normalized.sort((left, right) => new Date(right.createdAtIso).getTime() - new Date(left.createdAtIso).getTime());
+  }
+
+  function persistReturns(requests) {
+    const normalized = (Array.isArray(requests) ? requests : []).map((entry) => normalizeReturnRecord(entry));
+    writeJson(storageKeys.returns, normalized);
+    return normalized;
+  }
+
+  function persistReturnRecord(request) {
+    const requests = getReturns();
+    const normalized = normalizeReturnRecord(request);
+    const next = [normalized, ...requests.filter((entry) => entry.returnId !== normalized.returnId)];
+    persistReturns(next);
+    return normalized;
+  }
+
+  function getOrderReturns(orderId) {
+    return getReturns().filter((entry) => entry.orderId === orderId);
+  }
+
+  function getStaffReturns() {
+    return getReturns();
+  }
+
+  function canRequestReturn(order) {
+    return ["Delivered", "Completed"].includes(normalizeOrderStatus(order?.orderStatus));
+  }
+
+  function buildReturnContext(order, orderItemId) {
+    const item = (order?.items || []).find((entry) => entry.orderItemId === orderItemId) || null;
+    if (!item) {
+      return null;
+    }
+    return {
+      customerId: order.customerId,
+      productId: item.productId,
+      variantId: item.variantId,
+      productName: item.productName,
+      quantity: item.quantity
+    };
+  }
+
+  function mergeReturnRecord(request, order) {
+    const context = buildReturnContext(order, request?.orderItemId || request?.order_item_id);
+    return normalizeReturnRecord({
+      ...request,
+      customerId: context?.customerId || order?.customerId || request?.customerId || request?.customer_id || "",
+      productId: context?.productId || request?.productId || request?.product_id || "",
+      variantId: context?.variantId || request?.variantId || request?.variant_id || "",
+      productName: context?.productName || request?.productName || request?.product_name || "Unknown Product"
+    });
+  }
+
+  async function loadCustomerReviewsWithApi() {
+    const session = getSession();
+    if (!session || !session.customerId || !window.storefrontApi?.getCustomerReviews) {
+      return { ok: false, error: "API unavailable", reviews: getCustomerReviews(), source: "local" };
+    }
+    const response = await window.storefrontApi.getCustomerReviews(session.customerId);
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Customer reviews unavailable",
+        reviews: getCustomerReviews(),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+    response.data.forEach((review) => persistReviewRecord(review));
+    return { ok: true, reviews: getCustomerReviews(), source: "api" };
+  }
+
+  async function createReview(payload) {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Sign in with a customer account to submit a review." };
+    }
+
+    const orderId = String(payload?.orderId || "").trim();
+    const productId = String(payload?.productId || "").trim();
+    const variantId = String(payload?.variantId || "").trim();
+    const comment = String(payload?.comment || "").trim();
+    const rating = Math.min(5, Math.max(1, normalizeMoney(payload?.rating, 5)));
+    const order = getCustomerOrders().find((entry) => entry.orderId === orderId);
+    if (!order) {
+      return { ok: false, error: "Order not found." };
+    }
+    if (!canReviewOrder(order)) {
+      return { ok: false, error: "Only delivered or completed orders can be reviewed." };
+    }
+
+    const orderItem = (order.items || []).find((entry) => entry.productId === productId && entry.variantId === variantId);
+    if (!orderItem) {
+      return { ok: false, error: "Order item not found for review." };
+    }
+
+    const existing = getCustomerReviews().find((entry) =>
+      entry.productId === productId &&
+      entry.variantId === variantId &&
+      entry.orderId === orderId
+    );
+    if (existing) {
+      return { ok: false, error: "This product variant has already been reviewed for the selected order." };
+    }
+
+    const reviewId = String(payload?.reviewId || `review-${buildRuntimeToken("review")}`).trim();
+    const isBackendOrder = order.source === "backend" || order.backendState === "API connected";
+    if (!payload?._skipApi && window.storefrontApi?.createReview && isBackendOrder) {
+      const response = await window.storefrontApi.createReview({
+        orderId,
+        reviewId,
+        customerId: session.customerId,
+        productId,
+        variantId,
+        rating,
+        comment
+      });
+      if (!response.ok) {
+        return response.error === "API unavailable"
+          ? createReview({ ...payload, reviewId, _skipApi: true })
+          : { ok: false, error: `Review submit failed: ${response.error}` };
+      }
+      const review = persistReviewRecord({
+        ...response.data,
+        orderId,
+        customerId: session.customerId,
+        productId,
+        variantId,
+        rating,
+        comment
+      });
+      return { ok: true, review, reviews: getCustomerReviews(), source: "api" };
+    }
+
+    const review = persistReviewRecord({
+      reviewId,
+      orderId,
+      customerId: session.customerId,
+      productId,
+      variantId,
+      rating,
+      comment
+    });
+    return { ok: true, review, reviews: getCustomerReviews(), source: "local" };
+  }
+
+  async function createReturnRequest(payload) {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Sign in with a customer account to request a return." };
+    }
+
+    const orderId = String(payload?.orderId || "").trim();
+    const orderItemId = String(payload?.orderItemId || "").trim();
+    const reason = String(payload?.reason || "").trim();
+    const quantity = Math.max(1, normalizeMoney(payload?.quantity, 1));
+    const order = getCustomerOrders().find((entry) => entry.orderId === orderId);
+    if (!order) {
+      return { ok: false, error: "Order not found." };
+    }
+    if (!canRequestReturn(order)) {
+      return { ok: false, error: "Returns are only available after delivery." };
+    }
+
+    const context = buildReturnContext(order, orderItemId);
+    if (!context) {
+      return { ok: false, error: "Order item not found for return request." };
+    }
+    if (!reason) {
+      return { ok: false, error: "Please provide a reason for the return request." };
+    }
+    if (quantity > context.quantity) {
+      return { ok: false, error: "Return quantity exceeds purchased quantity." };
+    }
+
+    const duplicate = getOrderReturns(orderId).find((entry) =>
+      entry.orderItemId === orderItemId &&
+      !["Rejected", "Closed"].includes(entry.status)
+    );
+    if (duplicate) {
+      return { ok: false, error: "An active return request already exists for this order item." };
+    }
+
+    const returnId = String(payload?.returnId || `return-${buildRuntimeToken("return")}`).trim();
+    const isBackendOrder = order.source === "backend" || order.backendState === "API connected";
+    if (!payload?._skipApi && window.storefrontApi?.createReturn && isBackendOrder) {
+      const response = await window.storefrontApi.createReturn({
+        orderId,
+        returnId,
+        orderItemId,
+        quantity,
+        reason
+      });
+      if (!response.ok) {
+        return response.error === "API unavailable"
+          ? createReturnRequest({ ...payload, returnId, _skipApi: true })
+          : { ok: false, error: `Return request failed: ${response.error}` };
+      }
+      const request = persistReturnRecord(mergeReturnRecord({
+        ...response.data,
+        quantity,
+        reason
+      }, order));
+      return { ok: true, request, returns: getOrderReturns(orderId), source: "api" };
+    }
+
+    const request = persistReturnRecord({
+      returnId,
+      orderId,
+      orderItemId,
+      customerId: session.customerId,
+      productId: context.productId,
+      variantId: context.variantId,
+      productName: context.productName,
+      quantity,
+      reason,
+      status: "Requested"
+    });
+    return { ok: true, request, returns: getOrderReturns(orderId), source: "local" };
+  }
+
+  async function loadOrderReturnsWithApi(orderId) {
+    const order = getOrders().find((entry) => entry.orderId === orderId) || null;
+    const isBackendOrder = order && (order.source === "backend" || order.backendState === "API connected");
+    if (!window.storefrontApi?.getOrderReturns || !isBackendOrder) {
+      return { ok: false, error: "API unavailable", returns: getOrderReturns(orderId), source: "local" };
+    }
+    const response = await window.storefrontApi.getOrderReturns(orderId);
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Order returns unavailable",
+        returns: getOrderReturns(orderId),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+    response.data.forEach((request) => persistReturnRecord(mergeReturnRecord(request, order)));
+    return { ok: true, returns: getOrderReturns(orderId), source: "api" };
+  }
+
+  function updateReturnRecord(returnId, updater) {
+    const requests = getReturns();
+    const index = requests.findIndex((entry) => entry.returnId === returnId);
+    if (index < 0) {
+      return { ok: false, error: "Return request not found." };
+    }
+    const current = { ...requests[index] };
+    const updateResult = updater(current);
+    if (updateResult && updateResult.ok === false) {
+      return updateResult;
+    }
+    current.updatedAtIso = new Date().toISOString();
+    requests[index] = normalizeReturnRecord(current, requests[index]);
+    persistReturns(requests);
+    return { ok: true, request: requests[index], requests };
+  }
+
+  function applyStaffReturnAction(returnId, action) {
+    return updateReturnRecord(returnId, (request) => {
+      switch (action) {
+        case "approve":
+          if (request.status !== "Requested") {
+            return { ok: false, error: "Only requested returns can be approved." };
+          }
+          request.status = "Approved";
+          return { ok: true };
+        case "reject":
+          if (request.status !== "Requested") {
+            return { ok: false, error: "Only requested returns can be rejected." };
+          }
+          request.status = "Rejected";
+          return { ok: true };
+        case "restock":
+          if (request.status !== "Approved") {
+            return { ok: false, error: "Only approved returns can be restocked." };
+          }
+          {
+            const inventoryResult = applyInventoryDelta([{
+              productId: request.productId,
+              variantId: request.variantId,
+              quantity: request.quantity,
+              productName: request.productName
+            }], 1);
+            if (!inventoryResult.ok) {
+              return inventoryResult;
+            }
+          }
+          request.status = "Restocked";
+          return { ok: true };
+        case "refund":
+          if (request.status !== "Restocked") {
+            return { ok: false, error: "Only restocked returns can be refunded." };
+          }
+          request.status = "Refunded";
+          return { ok: true };
+        case "close":
+          if (!["Rejected", "Refunded"].includes(request.status)) {
+            return { ok: false, error: "Only rejected or refunded returns can be closed." };
+          }
+          request.status = "Closed";
+          return { ok: true };
+        default:
+          return { ok: false, error: "Unknown return action." };
+      }
+    });
+  }
+
+  async function loadStaffReturnsWithApi() {
+    if (!window.storefrontApi?.getStaffReturns) {
+      return { ok: false, error: "API unavailable", returns: getStaffReturns(), source: "local" };
+    }
+    const response = await window.storefrontApi.getStaffReturns();
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Staff returns unavailable",
+        returns: getStaffReturns(),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+    response.data.forEach((request) => {
+      const order = getOrders().find((entry) => entry.orderId === (request.orderId || request.order_id)) || null;
+      persistReturnRecord(mergeReturnRecord(request, order));
+    });
+    return { ok: true, returns: getStaffReturns(), source: "api" };
+  }
+
+  async function applyStaffReturnActionWithApi(returnId, action) {
+    const request = getReturns().find((entry) => entry.returnId === returnId) || null;
+    const order = request ? getOrders().find((entry) => entry.orderId === request.orderId) || null : null;
+    const isBackendOrder = order && (order.source === "backend" || order.backendState === "API connected");
+    if (!request || !window.storefrontApi || !isBackendOrder) {
+      return applyStaffReturnAction(returnId, action);
+    }
+
+    const actionMap = {
+      approve: "approveReturn",
+      reject: "rejectReturn",
+      restock: "restockReturn",
+      refund: "refundReturn",
+      close: "closeReturn"
+    };
+    const apiMethod = actionMap[action];
+    if (!apiMethod || typeof window.storefrontApi[apiMethod] !== "function") {
+      return { ok: false, error: "Unknown return action." };
+    }
+
+    const response = await window.storefrontApi[apiMethod](returnId);
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? applyStaffReturnAction(returnId, action)
+        : { ok: false, error: `Backend return action failed: ${response.error}` };
+    }
+
+    const updatedRequest = persistReturnRecord(mergeReturnRecord(response.data, order));
+    return { ok: true, request: updatedRequest, returns: getStaffReturns(), source: "api" };
   }
 
   function isInWishlist(productId) {
@@ -1653,6 +2247,10 @@
     restockStaffInventoryWithApi,
     updateVoucher,
     getAdminReport,
+    getManagedAccounts,
+    createManagedAccount,
+    setManagedAccountStatus,
+    resetManagedAccountPassword,
     isInWishlist,
     getWishlistProducts,
     addToCart,
@@ -1664,12 +2262,22 @@
     clearCart,
     getOrders,
     getCustomerOrders,
+    getOrderReturns,
+    getCustomerReviews,
     canCancelOrder,
     buildCartSummary,
     placeOrder,
+    createReview,
+    createReturnRequest,
     cancelCustomerOrder,
+    loadCustomerReviewsWithApi,
+    loadOrderReturnsWithApi,
     loadCustomerOrdersWithApi,
     cancelCustomerOrderWithApi,
+    getStaffReturns,
+    loadStaffReturnsWithApi,
+    applyStaffReturnAction,
+    applyStaffReturnActionWithApi,
     applyStaffOrderAction,
     loadStaffOrdersWithApi,
     applyStaffOrderActionWithApi,

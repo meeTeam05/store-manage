@@ -28,7 +28,10 @@ function targetPathForRole(role) {
   if (role === "Admin" || role === 3) {
     return "admin.html";
   }
-  if (role === "Staff" || role === 1 || role === "Manager" || role === 2) {
+  if (role === "Manager" || role === 2) {
+    return "admin.html";
+  }
+  if (role === "Staff" || role === 1) {
     return "staff.html";
   }
   return "cart.html";

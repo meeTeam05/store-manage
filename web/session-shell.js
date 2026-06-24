@@ -28,7 +28,9 @@
   const showOrdersLink = isCustomer && currentPage !== "orders.html";
   const workspaceLink = (role === "Admin" || role === "3")
     ? "admin.html"
-    : (role === "Staff" || role === "Manager" || role === "1" || role === "2" ? "staff.html" : null);
+    : (role === "Manager" || role === "2")
+      ? "admin.html"
+      : (role === "Staff" || role === "1" ? "staff.html" : null);
 
   const shell = document.createElement("div");
   shell.id = "nav-session-shell";

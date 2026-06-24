@@ -7,13 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20260620">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260624">
 </head>
 <body class="catalog-body">
   <header class="site-header">
     <a class="brand" href="index.html">Store Manage</a>
     <nav class="nav">
-      <a href="staff.html">Staff</a>
       <a href="login.html" data-auth-link>Switch Account</a>
     </nav>
   </header>
@@ -30,17 +29,17 @@
       <article>
         <span>01</span>
         <h2>Catalog</h2>
-        <p>Create products, add variants, update status, and manage merchandising data.</p>
+        <p>Tạo sản phẩm, thêm biến thể, cập nhật trạng thái bán và đồng bộ ảnh sản phẩm.</p>
       </article>
       <article>
         <span>02</span>
-        <h2>Promotions</h2>
-        <p>Create and monitor voucher rules, limits, active windows, and usage counts.</p>
+        <h2>Inventory</h2>
+        <p>Quản lý tồn kho theo biến thể, set stock tuyệt đối hoặc restock bổ sung cho từng SKU.</p>
       </article>
       <article>
         <span>03</span>
-        <h2>Reports</h2>
-        <p>Review revenue, best-selling products, and low-stock inventory summaries.</p>
+        <h2>Accounts</h2>
+        <p>Quản lý tài khoản hệ thống, khóa/mở khóa và tạo staff/admin local để demo quyền.</p>
       </article>
     </section>
 
@@ -54,8 +53,102 @@
         <section class="payment-card admin-section">
           <div class="admin-toolbar">
             <div>
+              <p class="summary-card-title">Create Catalog</p>
+              <p class="payment-meta">Chỉ admin mới được tạo product, thêm variant, và chuẩn bị dữ liệu inventory.</p>
+            </div>
+          </div>
+
+          <div class="staff-catalog-grid">
+            <form id="admin-create-product-form" class="admin-field-grid admin-form">
+              <label class="admin-field">
+                <span>Product ID</span>
+                <input name="productId" type="text" placeholder="product-jacket-001">
+              </label>
+              <label class="admin-field">
+                <span>Name</span>
+                <input name="name" type="text" required placeholder="Tailored Jacket">
+              </label>
+              <label class="admin-field">
+                <span>Category</span>
+                <select name="category">
+                  <option value="Tops">Tops</option>
+                  <option value="Bottoms">Bottoms</option>
+                  <option value="Outerwear">Outerwear</option>
+                  <option value="Dresses">Dresses</option>
+                  <option value="Shoes">Shoes</option>
+                  <option value="Accessories">Accessories</option>
+                </select>
+              </label>
+              <label class="admin-field">
+                <span>Status</span>
+                <select name="status">
+                  <option value="Draft">Draft</option>
+                  <option value="Active">Active</option>
+                  <option value="Discontinued">Discontinued</option>
+                </select>
+              </label>
+              <label class="admin-field">
+                <span>Collection</span>
+                <input name="collection" type="text" placeholder="Resort 2026">
+              </label>
+              <label class="admin-field admin-field-full">
+                <span>Description</span>
+                <textarea name="description" required placeholder="Short product description"></textarea>
+              </label>
+              <label class="admin-field admin-field-full">
+                <span>Image URLs (one per line)</span>
+                <textarea name="imageUrlsText" placeholder="https://example.com/look-1.jpg&#10;https://example.com/look-2.jpg"></textarea>
+              </label>
+              <label class="admin-field admin-field-full">
+                <span>Or upload local images</span>
+                <input name="imageFiles" type="file" accept="image/*" multiple>
+              </label>
+              <div class="admin-actions">
+                <button class="button primary compact" type="submit">Create Product</button>
+              </div>
+            </form>
+
+            <form id="admin-add-variant-form" class="admin-field-grid admin-form">
+              <label class="admin-field admin-field-full">
+                <span>Product</span>
+                <select name="productId" id="admin-variant-product"></select>
+              </label>
+              <label class="admin-field">
+                <span>Variant ID</span>
+                <input name="variantId" type="text" placeholder="variant-jacket-black-m">
+              </label>
+              <label class="admin-field">
+                <span>SKU</span>
+                <input name="sku" type="text" required placeholder="JACKET-BLK-M">
+              </label>
+              <label class="admin-field">
+                <span>Size</span>
+                <input name="size" type="text" required placeholder="M">
+              </label>
+              <label class="admin-field">
+                <span>Color</span>
+                <input name="color" type="text" required placeholder="Black">
+              </label>
+              <label class="admin-field">
+                <span>Price (VND)</span>
+                <input name="priceMinor" type="number" min="1000" step="1000" required>
+              </label>
+              <label class="admin-field">
+                <span>Initial Stock</span>
+                <input name="stockQuantity" type="number" min="0" step="1" value="0">
+              </label>
+              <div class="admin-actions">
+                <button class="button primary compact" type="submit">Add Variant</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="payment-card admin-section">
+          <div class="admin-toolbar">
+            <div>
               <p class="summary-card-title">Catalog Manager</p>
-              <p class="payment-meta">Update local catalog details, and save product image metadata to the backend JSON file when the API is available.</p>
+              <p class="payment-meta">Cập nhật catalog, trạng thái bán, ảnh và stock từng variant ngay trên card sản phẩm.</p>
             </div>
           </div>
           <div id="admin-product-list" class="admin-product-list"></div>
@@ -65,7 +158,7 @@
           <div class="admin-toolbar">
             <div>
               <p class="summary-card-title">Promotion Manager</p>
-              <p class="payment-meta">Adjust voucher code, discount rate, thresholds, and local activation state.</p>
+              <p class="payment-meta">Điều chỉnh voucher code, discount rate, threshold và trạng thái hoạt động.</p>
             </div>
           </div>
           <div id="admin-voucher-editor"></div>
@@ -74,8 +167,42 @@
         <section class="payment-card admin-section">
           <div class="admin-toolbar">
             <div>
+              <p class="summary-card-title">Account Manager</p>
+              <p class="payment-meta">Tạo staff/admin local, khóa/mở khóa account, và reset mật khẩu demo.</p>
+            </div>
+          </div>
+          <form id="admin-account-form" class="admin-field-grid admin-form">
+            <label class="admin-field">
+              <span>Role</span>
+              <select name="role">
+                <option value="Staff">Staff</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </label>
+            <label class="admin-field">
+              <span>Full Name</span>
+              <input name="fullName" type="text" required placeholder="New staff name">
+            </label>
+            <label class="admin-field">
+              <span>Username</span>
+              <input name="username" type="text" required placeholder="ops001">
+            </label>
+            <label class="admin-field">
+              <span>Password</span>
+              <input name="password" type="text" required placeholder="staff123">
+            </label>
+            <div class="admin-actions">
+              <button class="button primary compact" type="submit">Create Account</button>
+            </div>
+          </form>
+          <div id="admin-account-list" class="admin-product-list"></div>
+        </section>
+
+        <section class="payment-card admin-section">
+          <div class="admin-toolbar">
+            <div>
               <p class="summary-card-title">Reports</p>
-              <p class="payment-meta">Monitor revenue, best-selling products, low-stock variants, and the latest local orders.</p>
+              <p class="payment-meta">Theo dõi doanh thu, best-selling, low-stock và đơn gần nhất.</p>
             </div>
           </div>
           <div id="admin-report-body" class="admin-report-body"></div>

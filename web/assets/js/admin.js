@@ -1,6 +1,6 @@
-(function renderAdminDashboard() {
+(async function renderAdminDashboard() {
   function isAdminRole(role) {
-    return role === "Admin" || role === 3 || role === "3";
+    return ["Admin", "Manager", "2", "3"].includes(String(role));
   }
 
   function escapeHtml(value) {
@@ -12,17 +12,19 @@
       .replaceAll("'", "&#39;");
   }
 
-  function formatDate(isoString) {
-    return new Date(isoString).toLocaleString("vi-VN");
-  }
-
   const session = window.storefrontState.getSession();
   const sessionElement = document.getElementById("admin-session");
   const feedbackElement = document.getElementById("admin-feedback");
   const overviewMetricsElement = document.getElementById("admin-overview-metrics");
+  const createProductForm = document.getElementById("admin-create-product-form");
+  const addVariantForm = document.getElementById("admin-add-variant-form");
+  const variantProductSelect = document.getElementById("admin-variant-product");
   const productListElement = document.getElementById("admin-product-list");
   const voucherEditorElement = document.getElementById("admin-voucher-editor");
+  const accountForm = document.getElementById("admin-account-form");
+  const accountListElement = document.getElementById("admin-account-list");
   const reportBodyElement = document.getElementById("admin-report-body");
+  let productsCache = [];
 
   if (!session || !isAdminRole(session.role)) {
     window.location.href = "login.html";
@@ -56,11 +58,23 @@
     })));
   }
 
-  function renderOverview(report) {
+  async function loadProducts() {
+    if (window.storefrontState.loadProductsWithApi) {
+      const result = await window.storefrontState.loadProductsWithApi();
+      productsCache = result.products;
+      if (!result.ok && result.error !== "API unavailable") {
+        setFeedback(false, result.error);
+      }
+      return;
+    }
+    productsCache = window.storefrontState.getProducts();
+  }
+
+  function renderOverview(report, accountCount) {
     const metrics = [
       { label: "Active Products", value: report.activeProducts },
       { label: "Total Orders", value: report.totalOrders },
-      { label: "Open Orders", value: report.openOrders },
+      { label: "Live Accounts", value: accountCount },
       { label: "Net Revenue", value: window.storefrontState.formatMoney(report.revenueMinor) }
     ];
 
@@ -69,6 +83,18 @@
         <span>${escapeHtml(metric.label)}</span>
         <p>${escapeHtml(metric.value)}</p>
       </article>
+    `).join("");
+  }
+
+  function renderVariantProductSelect() {
+    if (productsCache.length === 0) {
+      variantProductSelect.innerHTML = '<option value="">Create a product first</option>';
+      variantProductSelect.disabled = true;
+      return;
+    }
+    variantProductSelect.disabled = false;
+    variantProductSelect.innerHTML = productsCache.map((product) => `
+      <option value="${escapeHtml(product.productId)}">${escapeHtml(product.name)} / ${escapeHtml(product.productId)}</option>
     `).join("");
   }
 
@@ -125,7 +151,7 @@
     setFeedback(true, imageResult.source === "api"
       ? `${productResult.product.name} updated, and product images saved to \`data/product_storefront.json\`.`
       : `${productResult.product.name} updated for this local session.`);
-    render();
+    await render();
   }
 
   function renderProductList(products) {
@@ -263,14 +289,78 @@
         maxDiscountMinor: Number(formData.get("maxDiscountMinor") || 0),
         isActive: String(formData.get("isActive")) === "true"
       });
-
       if (!result.ok) {
         setFeedback(false, result.error);
         return;
       }
-
       setFeedback(true, `Voucher ${result.voucher.code} updated for this local session.`);
       render();
+    });
+  }
+
+  function renderAccountList(accounts) {
+    accountListElement.innerHTML = accounts.map((account) => `
+      <article class="payment-card admin-product-card" data-account-id="${escapeHtml(account.accountId)}">
+        <div class="admin-card-head">
+          <div>
+            <p class="summary-card-title">${escapeHtml(account.displayName)}</p>
+            <p class="payment-meta">${escapeHtml(account.username)} / ${escapeHtml(account.role)}</p>
+          </div>
+          <div class="order-history-status">
+            <span>${escapeHtml(account.status)}</span>
+            <span>${escapeHtml(account.position || (account.customerId ? "Customer" : "Account"))}</span>
+          </div>
+        </div>
+
+        <div class="admin-field-grid">
+          <label class="admin-field">
+            <span>Reset Password</span>
+            <input name="password" type="text" placeholder="new-password">
+          </label>
+        </div>
+
+        <div class="admin-actions">
+          <button class="button compact ${account.status === "Active" ? "" : "primary"}" type="button" data-toggle-status>
+            ${account.status === "Active" ? "Lock Account" : "Unlock Account"}
+          </button>
+          <button class="button primary compact" type="button" data-reset-password>Reset Password</button>
+        </div>
+      </article>
+    `).join("");
+
+    accountListElement.querySelectorAll("[data-toggle-status]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const card = button.closest("[data-account-id]");
+        const accountId = String(card?.dataset.accountId || "");
+        const account = accounts.find((entry) => entry.accountId === accountId);
+        if (!account) {
+          return;
+        }
+        const nextStatus = account.status === "Active" ? "Locked" : "Active";
+        const result = window.storefrontState.setManagedAccountStatus(accountId, nextStatus);
+        setFeedback(result.ok, result.ok
+          ? `${account.username} is now ${nextStatus}.`
+          : result.error);
+        await render();
+      });
+    });
+
+    accountListElement.querySelectorAll("[data-reset-password]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const card = button.closest("[data-account-id]");
+        const accountId = String(card?.dataset.accountId || "");
+        const password = String(card?.querySelector('[name="password"]')?.value || "").trim();
+        const result = window.storefrontState.resetManagedAccountPassword(accountId, password);
+        setFeedback(result.ok, result.ok
+          ? "Password reset for local demo account."
+          : result.error);
+        if (result.ok) {
+          const input = card?.querySelector('[name="password"]');
+          if (input) {
+            input.value = "";
+          }
+        }
+      });
     });
   }
 
@@ -328,15 +418,95 @@
     `;
   }
 
-  function render() {
-    const products = window.storefrontState.getProducts();
+  function attachCreateForms() {
+    createProductForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(createProductForm);
+      const uploadedImages = await readFilesAsDataUrls(createProductForm.querySelector('[name="imageFiles"]'));
+      const imageUrlsText = mergeImageText(formData.get("imageUrlsText"), uploadedImages);
+      const submitButton = createProductForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      const result = await window.storefrontState.createStaffProductWithApi({
+        productId: String(formData.get("productId") || "").trim(),
+        name: String(formData.get("name") || "").trim(),
+        category: String(formData.get("category") || "Accessories"),
+        status: String(formData.get("status") || "Draft"),
+        collection: String(formData.get("collection") || "").trim(),
+        description: String(formData.get("description") || "").trim(),
+        imageUrlsText,
+        images: uploadedImages
+      });
+      submitButton.disabled = false;
+      setFeedback(result.ok, result.ok
+        ? (result.source === "api"
+          ? `${result.product.name} created and image metadata saved to \`data/product_storefront.json\`.`
+          : `${result.product.name} created for this local session.`)
+        : result.error);
+      if (result.ok) {
+        createProductForm.reset();
+        await render();
+      }
+    });
+
+    addVariantForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(addVariantForm);
+      const productId = String(formData.get("productId") || "");
+      if (!productId) {
+        setFeedback(false, "Choose a product before adding a variant.");
+        return;
+      }
+
+      const submitButton = addVariantForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      const result = await window.storefrontState.addStaffProductVariantWithApi(productId, {
+        variantId: String(formData.get("variantId") || "").trim(),
+        sku: String(formData.get("sku") || "").trim(),
+        size: String(formData.get("size") || "").trim(),
+        color: String(formData.get("color") || "").trim(),
+        priceMinor: Number(formData.get("priceMinor") || 0),
+        stockQuantity: Number(formData.get("stockQuantity") || 0)
+      });
+      submitButton.disabled = false;
+      setFeedback(result.ok, result.ok ? "Variant added." : result.error);
+      if (result.ok) {
+        addVariantForm.reset();
+        await render();
+      }
+    });
+
+    accountForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(accountForm);
+      const result = window.storefrontState.createManagedAccount({
+        role: String(formData.get("role") || "Staff"),
+        fullName: String(formData.get("fullName") || "").trim(),
+        username: String(formData.get("username") || "").trim(),
+        password: String(formData.get("password") || "").trim()
+      });
+      setFeedback(result.ok, result.ok
+        ? `${result.account.username} created for local demo.`
+        : result.error);
+      if (result.ok) {
+        accountForm.reset();
+        await render();
+      }
+    });
+  }
+
+  async function render() {
+    await loadProducts();
+    const accounts = window.storefrontState.getManagedAccounts();
     const voucher = window.storefrontState.getVoucher();
     const report = window.storefrontState.getAdminReport();
-    renderOverview(report);
-    renderProductList(products);
+    renderOverview(report, accounts.length);
+    renderVariantProductSelect();
+    renderProductList(productsCache);
     renderVoucherEditor(voucher);
+    renderAccountList(accounts);
     renderReportBody(report);
   }
 
-  render();
+  attachCreateForms();
+  await render();
 })();

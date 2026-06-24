@@ -6,6 +6,7 @@ window.storefrontData = {
       username: "client001",
       passwordHash: "hash:123456",
       role: "Customer",
+      status: "Active",
       customerId: "customer-001"
     },
     {
@@ -13,6 +14,7 @@ window.storefrontData = {
       username: "staff001",
       passwordHash: "hash:staff123",
       role: "Staff",
+      status: "Active",
       employeeId: "employee-001"
     },
     {
@@ -20,6 +22,7 @@ window.storefrontData = {
       username: "admin001",
       passwordHash: "hash:admin123",
       role: "Admin",
+      status: "Active",
       employeeId: "employee-002"
     }
   ],

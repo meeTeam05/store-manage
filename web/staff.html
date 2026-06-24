@@ -7,13 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20260620">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260624">
 </head>
 <body class="catalog-body">
   <header class="site-header">
     <a class="brand" href="index.html">Store Manage</a>
     <nav class="nav">
-      <a href="admin.html">Admin</a>
       <a href="login.html" data-auth-link>Switch Account</a>
     </nav>
   </header>
@@ -21,7 +20,7 @@
   <main class="dashboard-shell">
     <section class="dashboard-heading">
       <p class="eyebrow">Staff Workspace</p>
-      <h1>Store Operations</h1>
+      <h1>Order Operations</h1>
       <p id="staff-session" class="status"></p>
     </section>
 
@@ -29,24 +28,24 @@
       <article>
         <span>01</span>
         <h2>Orders</h2>
-        <p>Pack, ship, deliver, and cancel customer orders through staff services.</p>
+        <p>Xác nhận thanh toán, đóng gói, giao hàng, hoàn tất hoặc hủy đơn đúng luồng xử lý.</p>
       </article>
       <article>
         <span>02</span>
-        <h2>Inventory</h2>
-        <p>Update stock levels, restock variants, and monitor low-stock items.</p>
+        <h2>Shipping</h2>
+        <p>Cập nhật trạng thái chuẩn bị, đang giao, đã giao để khách theo dõi được tiến độ.</p>
       </article>
       <article>
         <span>03</span>
         <h2>Returns</h2>
-        <p>Approve, reject, restock, refund, and close return requests.</p>
+        <p>Duyệt yêu cầu đổi trả, restock hàng hoàn, refund và đóng hồ sơ hoàn trả.</p>
       </article>
     </section>
 
     <section class="staff-workbench">
       <article class="payment-card">
         <p class="summary-card-title">Order Control</p>
-        <p class="payment-meta">Manage live backend orders when the API is available, with local fallback for offline demo.</p>
+        <p class="payment-meta">Ưu tiên dùng backend nếu server đang chạy; nếu không sẽ dùng local demo state trong session hiện tại.</p>
         <div id="staff-order-metrics" class="info-grid order-history-grid"></div>
       </article>
 
@@ -54,7 +53,7 @@
         <div class="staff-toolbar">
           <div>
             <p class="summary-card-title">Order Queue</p>
-            <p class="payment-meta">Update payment, packing, shipping, delivery, and completion states.</p>
+            <p class="payment-meta">Chỉ staff xử lý các bước payment confirmation, packing, shipping, delivered, completed.</p>
           </div>
           <div id="staff-order-filters" class="chip-row staff-filter-row"></div>
         </div>
@@ -66,104 +65,14 @@
       <section class="payment-card">
         <div class="staff-toolbar">
           <div>
-            <p class="summary-card-title">Catalog & Inventory</p>
-            <p class="payment-meta">Create products, upload product images, and update backend inventory for sellable items.</p>
+            <p class="summary-card-title">Return Queue</p>
+            <p class="payment-meta">Xử lý tuần tự Requested → Approved/Rejected → Restocked → Refunded → Closed.</p>
           </div>
+          <div id="staff-return-filters" class="chip-row staff-filter-row"></div>
         </div>
-        <p id="staff-catalog-feedback" class="status" aria-live="polite"></p>
-
-        <div class="staff-catalog-grid">
-          <form id="staff-product-form" class="admin-field-grid admin-form">
-            <label class="admin-field">
-              <span>Product ID</span>
-              <input name="productId" type="text" placeholder="product-jacket-001">
-            </label>
-            <label class="admin-field">
-              <span>Name</span>
-              <input name="name" type="text" required placeholder="Tailored Jacket">
-            </label>
-            <label class="admin-field">
-              <span>Category</span>
-              <select name="category">
-                <option value="Tops">Tops</option>
-                <option value="Bottoms">Bottoms</option>
-                <option value="Outerwear">Outerwear</option>
-                <option value="Dresses">Dresses</option>
-                <option value="Shoes">Shoes</option>
-                <option value="Accessories">Accessories</option>
-              </select>
-            </label>
-            <label class="admin-field">
-              <span>Status</span>
-              <select name="status">
-                <option value="Draft">Draft</option>
-                <option value="Active">Active</option>
-                <option value="Discontinued">Discontinued</option>
-              </select>
-            </label>
-            <label class="admin-field">
-              <span>Collection</span>
-              <input name="collection" type="text" placeholder="Resort 2026">
-            </label>
-            <label class="admin-field admin-field-full">
-              <span>Description</span>
-              <textarea name="description" required placeholder="Short product description"></textarea>
-            </label>
-            <label class="admin-field admin-field-full">
-              <span>Image URLs (one per line)</span>
-              <textarea name="imageUrlsText" placeholder="https://example.com/look-1.jpg&#10;https://example.com/look-2.jpg"></textarea>
-            </label>
-            <label class="admin-field admin-field-full">
-              <span>Or upload local images</span>
-              <input name="imageFiles" type="file" accept="image/*" multiple>
-            </label>
-            <div class="admin-actions">
-              <button class="button primary compact" type="submit">Create Product</button>
-            </div>
-          </form>
-
-          <form id="staff-variant-form" class="admin-field-grid admin-form">
-            <label class="admin-field admin-field-full">
-              <span>Product</span>
-              <select name="productId" id="staff-variant-product"></select>
-            </label>
-            <label class="admin-field">
-              <span>Variant ID</span>
-              <input name="variantId" type="text" placeholder="variant-jacket-black-m">
-            </label>
-            <label class="admin-field">
-              <span>SKU</span>
-              <input name="sku" type="text" required placeholder="JACKET-BLK-M">
-            </label>
-            <label class="admin-field">
-              <span>Size</span>
-              <input name="size" type="text" required placeholder="M">
-            </label>
-            <label class="admin-field">
-              <span>Color</span>
-              <input name="color" type="text" required placeholder="Black">
-            </label>
-            <label class="admin-field">
-              <span>Price (VND)</span>
-              <input name="priceMinor" type="number" min="1000" step="1000" required>
-            </label>
-            <label class="admin-field">
-              <span>Initial Stock</span>
-              <input name="stockQuantity" type="number" min="0" step="1" value="0">
-            </label>
-            <div class="admin-actions">
-              <button class="button primary compact" type="submit">Add Variant</button>
-            </div>
-          </form>
-        </div>
-
-        <div class="staff-toolbar staff-inventory-toolbar">
-          <div>
-            <p class="summary-card-title">Inventory Levels</p>
-            <p class="payment-meta">Set absolute available stock or add restock quantity per variant.</p>
-          </div>
-        </div>
-        <div id="staff-inventory-list" class="admin-product-list"></div>
+        <p id="staff-return-feedback" class="status" aria-live="polite"></p>
+        <p id="staff-return-empty" class="payment-meta" hidden>No return requests yet.</p>
+        <div id="staff-return-list" class="staff-order-list"></div>
       </section>
     </section>
   </main>

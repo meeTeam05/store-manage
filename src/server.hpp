@@ -762,7 +762,10 @@ inline void setup_server(
         }
         auto result   = auth_svc.sign_in(username, pw_hash);
         if (!result) {
-            json_err(res, 401, "Invalid credentials");
+            const auto message = result.error() == application::identity::SignInError::AccountLocked
+                ? "Account locked"
+                : "Invalid credentials";
+            json_err(res, 401, message);
             return;
         }
         const auto& acc = result.value().account;
@@ -1125,6 +1128,13 @@ inline void setup_server(
     });
 
     // ── Returns (staff) ───────────────────────────────────────────────────────
+    svr.Get("/api/staff/returns", [&](const httplib::Request&, httplib::Response& res) {
+        auto requests = return_mgmt_svc.list_returns();
+        std::vector<std::string> arr;
+        for (const auto& request : requests) arr.push_back(ser_return(request));
+        json_ok(res, j_arr(arr));
+    });
+
     auto make_return_action = [&](const std::string& action) {
         return [&, action](const httplib::Request& req, httplib::Response& res) {
             ReturnId rid{req.matches[1].str()};

@@ -138,6 +138,15 @@ public:
         return return_repository_.find_by_order_id(order_id);
     }
 
+    std::vector<ReturnRequest> list_returns() const {
+        std::vector<ReturnRequest> requests;
+        for (const auto& order : order_repository_.list_all()) {
+            const auto order_requests = return_repository_.find_by_order_id(order.id());
+            requests.insert(requests.end(), order_requests.begin(), order_requests.end());
+        }
+        return requests;
+    }
+
 private:
     static const fashion_store::domain::order::OrderItem* find_order_item(
         const fashion_store::domain::order::Order& order,

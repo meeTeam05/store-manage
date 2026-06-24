@@ -216,6 +216,9 @@
     async closeReturn(returnId) {
       return request(`/api/returns/${returnId}/close`, { method: "POST" });
     },
+    async getStaffReturns() {
+      return request("/api/staff/returns");
+    },
 
     // Staff: catalog
     async createProduct({ productId, name, category, description, collection, status = "Active", imageUrlsText = "" }) {
