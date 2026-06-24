@@ -57,30 +57,49 @@
 
   // Setup dots
   if (dotsContainer) {
-    dotsContainer.innerHTML = products.map((_, i) => `
-      <button class="dot ${i === 0 ? "is-active" : ""}" data-index="${i}" type="button" aria-label="Go to slide ${i+1}"></button>
-    `).join("");
+    function renderDots() {
+      const card = grid.querySelector(".product-card");
+      if (!card) return;
 
-    const dots = dotsContainer.querySelectorAll(".dot");
-    dots.forEach((dot) => {
-      dot.addEventListener("click", () => {
-        const index = parseInt(dot.dataset.index || "0", 10);
-        const cardWidth = grid.querySelector(".product-card")?.getBoundingClientRect().width || 0;
-        const gap = 20; // grid gap
-        grid.scrollTo({
-          left: index * (cardWidth + gap),
-          behavior: "smooth"
+      const containerWidth = grid.getBoundingClientRect().width;
+      const cardWidth = card.getBoundingClientRect().width;
+      const gap = 20; // grid gap
+
+      // Calculate how many items fit in the viewport
+      const itemsPerPage = Math.round(containerWidth / (cardWidth + gap)) || 1;
+      const numDots = Math.max(1, products.length - itemsPerPage + 1);
+
+      let dotsHtml = "";
+      for (let i = 0; i < numDots; i++) {
+        dotsHtml += `
+          <button class="dot ${i === 0 ? "is-active" : ""}" data-index="${i}" type="button" aria-label="Go to slide ${i+1}"></button>
+        `;
+      }
+      dotsContainer.innerHTML = dotsHtml;
+
+      const dots = dotsContainer.querySelectorAll(".dot");
+      dots.forEach((dot) => {
+        dot.addEventListener("click", () => {
+          const index = parseInt(dot.dataset.index || "0", 10);
+          grid.scrollTo({
+            left: index * (cardWidth + gap),
+            behavior: "smooth"
+          });
         });
       });
-    });
 
-    // Update active dot on scroll
-    grid.addEventListener("scroll", () => {
-      const cardWidth = grid.querySelector(".product-card")?.getBoundingClientRect().width || 0;
+      updateActiveDot();
+    }
+
+    function updateActiveDot() {
+      const card = grid.querySelector(".product-card");
+      if (!card) return;
+      const cardWidth = card.getBoundingClientRect().width;
       const gap = 20;
       const scrollPos = grid.scrollLeft;
       const activeIndex = Math.round(scrollPos / (cardWidth + gap));
-      
+
+      const dots = dotsContainer.querySelectorAll(".dot");
       dots.forEach((dot, idx) => {
         if (idx === activeIndex) {
           dot.classList.add("is-active");
@@ -88,7 +107,16 @@
           dot.classList.remove("is-active");
         }
       });
-    });
+    }
+
+    // Initial dot render
+    renderDots();
+
+    // Update active dot on scroll
+    grid.addEventListener("scroll", updateActiveDot);
+
+    // Re-render dots on window resize to adjust for tablet/mobile layout changes
+    window.addEventListener("resize", renderDots);
   }
 
   // Setup arrows
