@@ -3,6 +3,7 @@
 #include "application/returns/returns_application_service.hpp"
 #include "application/staff/return_management_service.hpp"
 #include "domain/inventory/inventory_item.hpp"
+#include "domain/notification/notification.hpp"
 #include "domain/order/order.hpp"
 #include "infrastructure/persistence/in_memory/in_memory_repositories.hpp"
 
@@ -52,6 +53,7 @@ void verify_return_can_be_approved_restocked_refunded_and_closed() {
     InMemoryOrderRepository order_repository;
     InMemoryReturnRepository return_repository;
     InMemoryInventoryRepository inventory_repository;
+    InMemoryNotificationRepository notification_repository;
 
     const auto order_id = OrderId{"order-return-management-001"};
     const auto customer_id = CustomerId{"customer-return-management-001"};
@@ -70,7 +72,7 @@ void verify_return_can_be_approved_restocked_refunded_and_closed() {
         "Need another size");
     assert(request);
 
-    ReturnManagementService management_service(return_repository, order_repository, inventory_repository);
+    ReturnManagementService management_service(return_repository, order_repository, inventory_repository, notification_repository);
 
     auto restock_before_approve = management_service.restock_return(ReturnId{"return-management-001"});
     assert(!restock_before_approve);
@@ -79,6 +81,7 @@ void verify_return_can_be_approved_restocked_refunded_and_closed() {
     auto approved = management_service.approve_return(ReturnId{"return-management-001"});
     assert(approved);
     assert(approved.value().status() == ReturnStatus::Approved);
+    assert(notification_repository.find_by_customer_id(customer_id).size() == 1);
 
     auto restocked = management_service.restock_return(ReturnId{"return-management-001"});
     assert(restocked);
@@ -91,10 +94,12 @@ void verify_return_can_be_approved_restocked_refunded_and_closed() {
     auto refunded = management_service.refund_return(ReturnId{"return-management-001"});
     assert(refunded);
     assert(refunded.value().status() == ReturnStatus::Refunded);
+    assert(notification_repository.find_by_customer_id(customer_id).size() == 3);
 
     auto closed = management_service.close_return(ReturnId{"return-management-001"});
     assert(closed);
     assert(closed.value().status() == ReturnStatus::Closed);
+    assert(notification_repository.find_by_customer_id(customer_id).size() == 4);
 
     auto stored = return_repository.find_by_id(ReturnId{"return-management-001"});
     assert(stored.has_value());
@@ -106,6 +111,7 @@ void verify_rejected_return_can_be_closed_without_restock() {
     InMemoryOrderRepository order_repository;
     InMemoryReturnRepository return_repository;
     InMemoryInventoryRepository inventory_repository;
+    InMemoryNotificationRepository notification_repository;
 
     const auto order_id = OrderId{"order-return-management-002"};
     const auto customer_id = CustomerId{"customer-return-management-002"};
@@ -124,10 +130,11 @@ void verify_rejected_return_can_be_closed_without_restock() {
         "Return reason rejected by staff");
     assert(request);
 
-    ReturnManagementService management_service(return_repository, order_repository, inventory_repository);
+    ReturnManagementService management_service(return_repository, order_repository, inventory_repository, notification_repository);
     auto rejected = management_service.reject_return(ReturnId{"return-management-002"});
     assert(rejected);
     assert(rejected.value().status() == ReturnStatus::Rejected);
+    assert(notification_repository.find_by_customer_id(customer_id).size() == 1);
 
     auto restock_rejected = management_service.restock_return(ReturnId{"return-management-002"});
     assert(!restock_rejected);

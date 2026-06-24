@@ -59,6 +59,11 @@ struct ReturnId {
     auto operator<=>(const ReturnId&) const = default;
 };
 
+struct NotificationId {
+    std::string value;
+    auto operator<=>(const NotificationId&) const = default;
+};
+
 struct Size {
     std::string value;
     auto operator<=>(const Size&) const = default;

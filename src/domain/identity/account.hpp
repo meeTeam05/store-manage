@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "domain/shared/types.hpp"
 
@@ -40,6 +41,8 @@ public:
 
     void activate() noexcept;
 
+    void change_password(std::string password_hash);
+
 private:
     AccountId id_;
     std::string username_;
@@ -54,6 +57,7 @@ public:
 
     virtual std::optional<Account> find_by_id(const AccountId& account_id) const = 0;
     virtual std::optional<Account> find_by_username(const std::string& username) const = 0;
+    virtual std::vector<Account> list_all() const = 0;
     virtual void save(const Account& account) = 0;
 };
 

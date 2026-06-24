@@ -28,4 +28,9 @@ void Account::activate() noexcept {
     status_ = AccountStatus::Active;
 }
 
+void Account::change_password(std::string password_hash) {
+    require(!password_hash.empty(), "password hash must not be empty");
+    password_hash_ = std::move(password_hash);
+}
+
 }  // namespace fashion_store::domain::identity

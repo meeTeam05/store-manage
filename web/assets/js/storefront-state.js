@@ -32,7 +32,8 @@
     customers: "fashion_store_customers",
     employees: "fashion_store_employees",
     reviews: "fashion_store_reviews",
-    returns: "fashion_store_returns"
+    returns: "fashion_store_returns",
+    notifications: "fashion_store_notifications"
   };
   const productImageFallbacks = {
     Outerwear: [
@@ -252,6 +253,21 @@
     };
   }
 
+  function normalizeNotificationRecord(notification, fallback = {}) {
+    return {
+      notificationId: String(notification?.notificationId || notification?.notification_id || fallback.notificationId || "").trim(),
+      customerId: String(notification?.customerId || notification?.customer_id || fallback.customerId || "").trim(),
+      type: String(notification?.type || fallback.type || "ReturnStatusUpdated").trim() || "ReturnStatusUpdated",
+      title: String(notification?.title || fallback.title || "").trim(),
+      message: String(notification?.message || fallback.message || "").trim(),
+      returnId: String(notification?.returnId || notification?.return_id || fallback.returnId || "").trim(),
+      returnStatus: String(notification?.returnStatus || notification?.return_status || fallback.returnStatus || "").trim(),
+      extraDetail: String(notification?.extraDetail || notification?.extra_detail || fallback.extraDetail || "").trim(),
+      createdAtIso: String(notification?.createdAtIso || notification?.created_at || fallback.createdAtIso || new Date().toISOString()),
+      isRead: Boolean(notification?.isRead ?? notification?.is_read ?? fallback.isRead ?? false)
+    };
+  }
+
   function formatMoney(minor) {
     return new Intl.NumberFormat("vi-VN").format(minor) + " VND";
   }
@@ -306,6 +322,19 @@
       status: normalizeAccountStatus(account?.status || fallback.status),
       customerId: account?.customerId ?? account?.customer_id ?? fallback.customerId ?? null,
       employeeId: account?.employeeId ?? account?.employee_id ?? fallback.employeeId ?? null
+    };
+  }
+
+  function normalizeManagedAccountView(account, fallback = {}) {
+    return {
+      accountId: String(account?.accountId || account?.account_id || fallback.accountId || "").trim(),
+      username: String(account?.username || fallback.username || "").trim(),
+      role: String(account?.role || fallback.role || "Customer").trim() || "Customer",
+      status: normalizeAccountStatus(account?.status || fallback.status),
+      customerId: account?.customerId ?? account?.customer_id ?? fallback.customerId ?? null,
+      employeeId: account?.employeeId ?? account?.employee_id ?? fallback.employeeId ?? null,
+      displayName: String(account?.displayName || account?.display_name || fallback.displayName || fallback.username || "").trim(),
+      position: account?.position ?? fallback.position ?? null
     };
   }
 
@@ -393,6 +422,41 @@
     return next;
   }
 
+  function syncManagedAccountView(rawAccount) {
+    const managed = normalizeManagedAccountView(rawAccount);
+    const account = upsertAccount({
+      accountId: managed.accountId,
+      username: managed.username,
+      role: managed.role,
+      status: managed.status,
+      customerId: managed.customerId,
+      employeeId: managed.employeeId
+    });
+    if (managed.customerId) {
+      upsertCustomer({
+        customerId: managed.customerId,
+        accountId: managed.accountId,
+        fullName: managed.displayName || managed.username,
+        wishlist: []
+      });
+    }
+    if (managed.employeeId) {
+      upsertEmployee({
+        employeeId: managed.employeeId,
+        accountId: managed.accountId,
+        fullName: managed.displayName || managed.username,
+        position: managed.position || ""
+      });
+    }
+    return {
+      ...managed,
+      accountId: account.accountId,
+      username: account.username,
+      role: account.role,
+      status: account.status
+    };
+  }
+
   function buildSession(account, customer) {
     const employee = getEmployees().find((entry) => entry.employeeId === account.employeeId);
     return {
@@ -403,7 +467,8 @@
       customerId: account.customerId,
       employeeId: account.employeeId,
       displayName: customer ? customer.fullName : (employee ? employee.fullName : account.username),
-      customerName: customer ? customer.fullName : account.username
+      customerName: customer ? customer.fullName : account.username,
+      authToken: null
     };
   }
 
@@ -462,7 +527,8 @@
           passwordHash: normalizedPasswordHash,
           role: response.data.role,
           status: response.data.status || "Active",
-          customerId: response.data.customerId || response.data.customer_id
+          customerId: response.data.customerId || response.data.customer_id,
+          employeeId: response.data.employeeId || response.data.employee_id
         });
         const customer = response.data.customer ? upsertCustomer(response.data.customer) : (
           account.customerId ? getCustomers().find((entry) => entry.customerId === account.customerId) || null : null
@@ -471,8 +537,12 @@
         if (response.data.displayName) {
           session.displayName = response.data.displayName;
         }
+        session.authToken = response.data.token || null;
         writeJson(storageKeys.session, session);
         return { ok: true, session };
+      }
+      if (response.error && response.error !== "API unavailable") {
+        return response;
       }
     }
     return signIn(username, normalizedPasswordHash);
@@ -506,6 +576,7 @@
           username: response.data.username,
           passwordHash: normalizedPasswordHash,
           role: response.data.role,
+          status: response.data.status || "Active",
           customerId: response.data.customerId || response.data.customer_id
         });
         const customer = response.data.customer
@@ -520,6 +591,7 @@
               wishlist: []
             });
         const session = buildSession(account, customer);
+        session.authToken = response.data.token || null;
         writeJson(storageKeys.session, session);
         return { ok: true, session };
       }
@@ -641,6 +713,85 @@
     return { ok: true, product: next, products };
   }
 
+  async function updateProductStatusWithApi(productId, status) {
+    const previousProduct = getProduct(productId);
+    const localResult = updateProduct(productId, { status });
+    if (!localResult.ok) {
+      return localResult;
+    }
+
+    if (!window.storefrontApi?.updateProductStatus) {
+      return { ok: true, product: localResult.product, products: localResult.products, source: "local" };
+    }
+
+    const response = await window.storefrontApi.updateProductStatus(productId, status);
+    if (!response.ok) {
+      if (response.error === "API unavailable") {
+        return { ok: true, product: localResult.product, products: localResult.products, source: "local" };
+      }
+
+      if (previousProduct) {
+        persistProducts(
+          getProducts().map((entry) => entry.productId === previousProduct.productId ? previousProduct : entry)
+        );
+      }
+      return { ok: false, error: `Backend status update failed: ${response.error}` };
+    }
+
+    const backendProduct = normalizeApiProducts([response.data])[0];
+    const currentProduct = getProduct(productId) || localResult.product;
+    const mergedProduct = normalizeProducts([{
+      ...currentProduct,
+      status: backendProduct.status
+    }])[0];
+    const nextProducts = persistProducts(
+      getProducts().map((entry) => entry.productId === mergedProduct.productId ? mergedProduct : entry)
+    );
+    return { ok: true, product: mergedProduct, products: nextProducts, source: "api" };
+  }
+
+  async function updateProductWithApi(productId, patch) {
+    const previousProduct = getProduct(productId);
+    const localResult = updateProduct(productId, patch);
+    if (!localResult.ok) {
+      return localResult;
+    }
+
+    if (!window.storefrontApi?.updateProduct) {
+      return { ok: true, product: localResult.product, products: localResult.products, source: "local" };
+    }
+
+    const response = await window.storefrontApi.updateProduct(productId, {
+      name: localResult.product.name,
+      category: localResult.product.category,
+      description: localResult.product.description,
+      collection: localResult.product.collection,
+      status: localResult.product.status
+    });
+    if (!response.ok) {
+      if (response.error === "API unavailable") {
+        return { ok: true, product: localResult.product, products: localResult.products, source: "local" };
+      }
+
+      if (previousProduct) {
+        persistProducts(
+          getProducts().map((entry) => entry.productId === previousProduct.productId ? previousProduct : entry)
+        );
+      }
+      return { ok: false, error: `Backend product update failed: ${response.error}` };
+    }
+
+    const backendProduct = normalizeApiProducts([response.data])[0];
+    const mergedProduct = normalizeProducts([{
+      ...backendProduct,
+      priceMinor: localResult.product.priceMinor
+    }])[0];
+    const nextProducts = persistProducts(
+      getProducts().map((entry) => entry.productId === mergedProduct.productId ? mergedProduct : entry)
+    );
+    return { ok: true, product: mergedProduct, products: nextProducts, source: "api" };
+  }
+
   function updateVariantStock(productId, variantId, stockQuantity) {
     const products = getProducts();
     const product = products.find((entry) => entry.productId === productId);
@@ -651,6 +802,9 @@
     const variant = product.variants.find((entry) => entry.variantId === variantId);
     if (!variant) {
       return { ok: false, error: "Variant not found." };
+    }
+    if (!variant.active) {
+      return { ok: false, error: "Variant is not active for sale." };
     }
 
     const normalizedStock = normalizeMoney(stockQuantity, -1);
@@ -755,10 +909,15 @@
     }
 
     const backendProduct = normalizeApiProducts([response.data])[0];
+    const currentProduct = getProduct(productId) || localResult.product;
+    const mergedProduct = normalizeProducts([{
+      ...currentProduct,
+      images: backendProduct.images
+    }])[0];
     const nextProducts = persistProducts(
-      getProducts().map((entry) => entry.productId === backendProduct.productId ? backendProduct : entry)
+      getProducts().map((entry) => entry.productId === mergedProduct.productId ? mergedProduct : entry)
     );
-    return { ok: true, product: backendProduct, products: nextProducts, source: "api" };
+    return { ok: true, product: mergedProduct, products: nextProducts, source: "api" };
   }
 
   function addLocalProductVariant(productId, draft) {
@@ -1076,6 +1235,105 @@
     });
   }
 
+  async function loadManagedAccountsWithApi(filters = {}) {
+    if (!window.storefrontApi?.getAdminAccounts) {
+      return { ok: false, error: "API unavailable", accounts: getManagedAccounts(), source: "local" };
+    }
+    const response = await window.storefrontApi.getAdminAccounts(filters);
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Managed accounts unavailable",
+        accounts: getManagedAccounts(),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+    const accounts = response.data.map((entry) => syncManagedAccountView(entry));
+    return { ok: true, accounts, source: "api" };
+  }
+
+  async function createManagedAccountWithApi({ role, username, password, fullName }) {
+    const cleanPasswordHash = normalizePasswordHash(String(password || "").trim());
+    if (!window.storefrontApi?.createManagedAccount) {
+      const local = createManagedAccount({ role, username, password, fullName });
+      return { ...local, source: "local" };
+    }
+    const response = await window.storefrontApi.createManagedAccount({
+      role,
+      username,
+      passwordHash: cleanPasswordHash,
+      fullName
+    });
+    if (!response.ok) {
+      if (response.error === "API unavailable") {
+        const local = createManagedAccount({ role, username, password, fullName });
+        return { ...local, source: "local" };
+      }
+      return { ok: false, error: response.error };
+    }
+    const account = syncManagedAccountView(response.data);
+    upsertAccount({
+      accountId: account.accountId,
+      username: account.username,
+      passwordHash: cleanPasswordHash,
+      role: account.role,
+      status: account.status,
+      customerId: account.customerId,
+      employeeId: account.employeeId
+    });
+    return { ok: true, account, source: "api" };
+  }
+
+  async function setManagedAccountStatusWithApi(accountId, status) {
+    if (!window.storefrontApi?.updateAccountStatus) {
+      const local = setManagedAccountStatus(accountId, status);
+      return { ...local, source: "local" };
+    }
+    const response = await window.storefrontApi.updateAccountStatus(accountId, status);
+    if (!response.ok) {
+      if (response.error === "API unavailable") {
+        const local = setManagedAccountStatus(accountId, status);
+        return { ...local, source: "local" };
+      }
+      return { ok: false, error: response.error };
+    }
+    const account = syncManagedAccountView(response.data);
+    if (account.status === "Locked") {
+      const session = getSession();
+      if (session && session.accountId === account.accountId) {
+        signOut();
+      }
+    }
+    return { ok: true, account, source: "api" };
+  }
+
+  async function resetManagedAccountPasswordWithApi(accountId, password) {
+    const cleanPasswordHash = normalizePasswordHash(String(password || "").trim());
+    if (!window.storefrontApi?.resetAccountPassword) {
+      const local = resetManagedAccountPassword(accountId, password);
+      return { ...local, source: "local" };
+    }
+    const response = await window.storefrontApi.resetAccountPassword(accountId, cleanPasswordHash);
+    if (!response.ok) {
+      if (response.error === "API unavailable") {
+        const local = resetManagedAccountPassword(accountId, password);
+        return { ...local, source: "local" };
+      }
+      return { ok: false, error: response.error };
+    }
+    const account = syncManagedAccountView(response.data);
+    upsertAccount({
+      accountId: account.accountId,
+      username: account.username,
+      passwordHash: cleanPasswordHash,
+      role: account.role,
+      status: account.status,
+      customerId: account.customerId,
+      employeeId: account.employeeId
+    });
+    return { ok: true, account, source: "api" };
+  }
+
   function getReviews() {
     const rawReviews = readJson(storageKeys.reviews, []);
     const normalized = (Array.isArray(rawReviews) ? rawReviews : []).map((entry) => normalizeReviewRecord(entry));
@@ -1128,6 +1386,75 @@
     const next = [normalized, ...requests.filter((entry) => entry.returnId !== normalized.returnId)];
     persistReturns(next);
     return normalized;
+  }
+
+  function getNotifications() {
+    const rawNotifications = readJson(storageKeys.notifications, []);
+    const normalized = (Array.isArray(rawNotifications) ? rawNotifications : []).map((entry) => normalizeNotificationRecord(entry));
+    writeJson(storageKeys.notifications, normalized);
+    return normalized.sort((left, right) => new Date(right.createdAtIso).getTime() - new Date(left.createdAtIso).getTime());
+  }
+
+  function persistNotifications(notifications) {
+    const normalized = (Array.isArray(notifications) ? notifications : []).map((entry) => normalizeNotificationRecord(entry));
+    writeJson(storageKeys.notifications, normalized);
+    return normalized;
+  }
+
+  function persistNotificationRecord(notification) {
+    const notifications = getNotifications();
+    const normalized = normalizeNotificationRecord(notification);
+    const next = [normalized, ...notifications.filter((entry) => entry.notificationId !== normalized.notificationId)];
+    persistNotifications(next);
+    return normalized;
+  }
+
+  function createReturnNotification(request, { title, message, extraDetail = "" } = {}) {
+    const customerId = String(request.customerId || "").trim();
+    if (!customerId) {
+      return null;
+    }
+    return persistNotificationRecord({
+      notificationId: `notification-${request.returnId}-${request.status}-${buildRuntimeToken("note")}`,
+      customerId,
+      type: "ReturnStatusUpdated",
+      title,
+      message,
+      returnId: request.returnId,
+      returnStatus: request.status,
+      extraDetail,
+      createdAtIso: new Date().toISOString(),
+      isRead: false
+    });
+  }
+
+  function getCustomerNotifications() {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return [];
+    }
+    return getNotifications().filter((entry) => entry.customerId === session.customerId);
+  }
+
+  function markNotificationRead(notificationId) {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Customer session required." };
+    }
+    const notifications = getNotifications();
+    const index = notifications.findIndex((entry) => entry.notificationId === notificationId);
+    if (index < 0) {
+      return { ok: false, error: "Notification not found." };
+    }
+    if (notifications[index].customerId !== session.customerId) {
+      return { ok: false, error: "You can only update your own notifications." };
+    }
+    notifications[index] = normalizeNotificationRecord({
+      ...notifications[index],
+      isRead: true
+    }, notifications[index]);
+    persistNotifications(notifications);
+    return { ok: true, notification: notifications[index], notifications: getCustomerNotifications() };
   }
 
   function getOrderReturns(orderId) {
@@ -1370,8 +1697,11 @@
     return { ok: true, request: requests[index], requests };
   }
 
-  function applyStaffReturnAction(returnId, action) {
-    return updateReturnRecord(returnId, (request) => {
+  function applyStaffReturnAction(returnId, action, detail = {}) {
+    const detailText = action === "refund"
+      ? String(detail.refundReference || "").trim()
+      : String(detail.note || "").trim();
+    const result = updateReturnRecord(returnId, (request) => {
       switch (action) {
         case "approve":
           if (request.status !== "Requested") {
@@ -1418,6 +1748,38 @@
           return { ok: false, error: "Unknown return action." };
       }
     });
+    if (!result.ok) {
+      return result;
+    }
+    const notificationContent = {
+      approve: {
+        title: "Return approved",
+        message: "Your return request has been approved by staff."
+      },
+      reject: {
+        title: "Return rejected",
+        message: "Your return request has been rejected by staff."
+      },
+      restock: {
+        title: "Return restocked",
+        message: "Returned items have been restocked into store inventory."
+      },
+      refund: {
+        title: "Refund issued",
+        message: "A refund has been issued for your return request."
+      },
+      close: {
+        title: "Return case closed",
+        message: "Your return case has been closed."
+      }
+    }[action];
+    if (notificationContent) {
+      createReturnNotification(result.request, {
+        ...notificationContent,
+        extraDetail: detailText
+      });
+    }
+    return result;
   }
 
   async function loadStaffReturnsWithApi() {
@@ -1440,12 +1802,12 @@
     return { ok: true, returns: getStaffReturns(), source: "api" };
   }
 
-  async function applyStaffReturnActionWithApi(returnId, action) {
+  async function applyStaffReturnActionWithApi(returnId, action, detail = {}) {
     const request = getReturns().find((entry) => entry.returnId === returnId) || null;
     const order = request ? getOrders().find((entry) => entry.orderId === request.orderId) || null : null;
     const isBackendOrder = order && (order.source === "backend" || order.backendState === "API connected");
     if (!request || !window.storefrontApi || !isBackendOrder) {
-      return applyStaffReturnAction(returnId, action);
+      return applyStaffReturnAction(returnId, action, detail);
     }
 
     const actionMap = {
@@ -1460,15 +1822,58 @@
       return { ok: false, error: "Unknown return action." };
     }
 
-    const response = await window.storefrontApi[apiMethod](returnId);
+    const payload = action === "refund"
+      ? String(detail.refundReference || "").trim()
+      : String(detail.note || "").trim();
+    const response = await window.storefrontApi[apiMethod](returnId, payload);
     if (!response.ok) {
       return response.error === "API unavailable"
-        ? applyStaffReturnAction(returnId, action)
+        ? applyStaffReturnAction(returnId, action, detail)
         : { ok: false, error: `Backend return action failed: ${response.error}` };
     }
 
     const updatedRequest = persistReturnRecord(mergeReturnRecord(response.data, order));
     return { ok: true, request: updatedRequest, returns: getStaffReturns(), source: "api" };
+  }
+
+  async function loadCustomerNotificationsWithApi() {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Customer session required", notifications: [], source: "local" };
+    }
+    if (!window.storefrontApi?.getCustomerNotifications) {
+      return { ok: false, error: "API unavailable", notifications: getCustomerNotifications(), source: "local" };
+    }
+    const response = await window.storefrontApi.getCustomerNotifications(session.customerId);
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Notifications unavailable",
+        notifications: getCustomerNotifications(),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+    const others = getNotifications().filter((entry) => entry.customerId !== session.customerId);
+    const backendNotifications = response.data.map((entry) => normalizeNotificationRecord(entry));
+    persistNotifications([...backendNotifications, ...others]);
+    return { ok: true, notifications: getCustomerNotifications(), source: "api" };
+  }
+
+  async function markNotificationReadWithApi(notificationId) {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Customer session required." };
+    }
+    if (!window.storefrontApi?.markNotificationRead) {
+      return markNotificationRead(notificationId);
+    }
+    const response = await window.storefrontApi.markNotificationRead(session.customerId, notificationId);
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? markNotificationRead(notificationId)
+        : { ok: false, error: response.error };
+    }
+    return { ok: true, notification: persistNotificationRecord(response.data), notifications: getCustomerNotifications(), source: "api" };
   }
 
   function isInWishlist(productId) {
@@ -1610,10 +2015,36 @@
     return { ok: true, items };
   }
 
+  async function setCartQuantityWithApi(variantId, quantity) {
+    const session = getSession();
+    if (window.storefrontApi && session?.customerId) {
+      const cartId = `cart-${session.customerId}`;
+      const response = await window.storefrontApi.setCartQuantity(cartId, variantId, quantity);
+      if (response.ok || response.error === "API unavailable") {
+        return setCartQuantity(variantId, quantity);
+      }
+      return response;
+    }
+    return setCartQuantity(variantId, quantity);
+  }
+
   function removeFromCart(variantId) {
     const items = getCart().filter((entry) => entry.variantId !== variantId);
     persistCart(items);
     return { ok: true, items };
+  }
+
+  async function removeFromCartWithApi(variantId) {
+    const session = getSession();
+    if (window.storefrontApi && session?.customerId) {
+      const cartId = `cart-${session.customerId}`;
+      const response = await window.storefrontApi.removeFromCart(cartId, variantId);
+      if (response.ok || response.error === "API unavailable") {
+        return removeFromCart(variantId);
+      }
+      return response;
+    }
+    return removeFromCart(variantId);
   }
 
   function clearCart() {
@@ -2239,6 +2670,8 @@
     loadProductsWithApi,
     getVoucher,
     updateProduct,
+    updateProductStatusWithApi,
+    updateProductWithApi,
     updateVariantStock,
     createStaffProductWithApi,
     saveProductImagesWithApi,
@@ -2251,6 +2684,10 @@
     createManagedAccount,
     setManagedAccountStatus,
     resetManagedAccountPassword,
+    loadManagedAccountsWithApi,
+    createManagedAccountWithApi,
+    setManagedAccountStatusWithApi,
+    resetManagedAccountPasswordWithApi,
     isInWishlist,
     getWishlistProducts,
     addToCart,
@@ -2258,7 +2695,9 @@
     toggleWishlist,
     getCart,
     setCartQuantity,
+    setCartQuantityWithApi,
     removeFromCart,
+    removeFromCartWithApi,
     clearCart,
     getOrders,
     getCustomerOrders,
@@ -2270,7 +2709,11 @@
     createReview,
     createReturnRequest,
     cancelCustomerOrder,
+    getCustomerNotifications,
+    markNotificationRead,
     loadCustomerReviewsWithApi,
+    loadCustomerNotificationsWithApi,
+    markNotificationReadWithApi,
     loadOrderReturnsWithApi,
     loadCustomerOrdersWithApi,
     cancelCustomerOrderWithApi,

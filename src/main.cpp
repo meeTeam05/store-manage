@@ -4,10 +4,12 @@
 #include <iostream>
 #include <optional>
 
+#include "application/admin/account_management_service.hpp"
 #include "application/cart/cart_application_service.hpp"
 #include "application/catalog/catalog_application_service.hpp"
 #include "application/customer/customer_application_service.hpp"
 #include "application/identity/auth_application_service.hpp"
+#include "application/notification/notification_application_service.hpp"
 #include "application/order/order_application_service.hpp"
 #include "application/payment/payment_application_service.hpp"
 #include "application/report/report_application_service.hpp"
@@ -22,6 +24,7 @@
 #include "domain/inventory/inventory_item.hpp"
 #include "domain/order/order.hpp"
 #include "domain/pricing/voucher.hpp"
+#include "domain/staff/employee.hpp"
 #include "infrastructure/persistence/file/file_repositories.hpp"
 #include "server.hpp"
 
@@ -47,7 +50,9 @@ int main() {
     using namespace fashion_store::application::cart;
     using namespace fashion_store::application::catalog;
     using namespace fashion_store::application::customer;
+    using namespace fashion_store::application::admin;
     using namespace fashion_store::application::identity;
+    using namespace fashion_store::application::notification;
     using namespace fashion_store::application::order;
     using namespace fashion_store::application::payment;
     using namespace fashion_store::application::report;
@@ -62,6 +67,7 @@ int main() {
     using namespace fashion_store::domain::order;
     using namespace fashion_store::domain::pricing;
     using namespace fashion_store::domain::shared;
+    using namespace fashion_store::domain::staff;
     using namespace fashion_store::infrastructure::persistence::file;
 
     const auto data_dir = resolve_project_path("data");
@@ -83,12 +89,14 @@ int main() {
     FileProductRepository product_repository(data_dir / "products.txt");
     FileCustomerRepository customer_repository(data_dir / "customers.txt");
     FileAccountRepository account_repository(data_dir / "accounts.txt");
+    FileEmployeeRepository employee_repository(data_dir / "employees.txt");
     FileInventoryRepository inventory_repository(data_dir / "inventory.txt");
     FileCartRepository cart_repository(data_dir / "carts.txt");
     FileOrderRepository order_repository(data_dir / "orders.txt");
     FileVoucherRepository voucher_repository(data_dir / "vouchers.txt");
     FileReviewRepository review_repository(data_dir / "reviews.txt");
     FileReturnRepository return_repository(data_dir / "returns.txt");
+    FileNotificationRepository notification_repository(data_dir / "notifications.txt");
 
     const ShippingAddress default_addr{
         "Nguyen Van A",
@@ -182,6 +190,13 @@ int main() {
             Role::Staff,
             AccountStatus::Active));
     }
+    if (!employee_repository.find_by_id(EmployeeId{"employee-001"}).has_value()) {
+        employee_repository.save(Employee(
+            EmployeeId{"employee-001"},
+            AccountId{"account-002"},
+            "Store Staff",
+            "Operations Staff"));
+    }
     if (!account_repository.find_by_id(AccountId{"account-003"}).has_value()) {
         account_repository.save(Account(
             AccountId{"account-003"},
@@ -189,6 +204,13 @@ int main() {
             "hash:admin123",
             Role::Admin,
             AccountStatus::Active));
+    }
+    if (!employee_repository.find_by_id(EmployeeId{"employee-002"}).has_value()) {
+        employee_repository.save(Employee(
+            EmployeeId{"employee-002"},
+            AccountId{"account-003"},
+            "System Admin",
+            "Administrator"));
     }
 
     const auto now = std::chrono::system_clock::now();
@@ -208,6 +230,8 @@ int main() {
     CartApplicationService cart_svc(cart_repository, product_repository);
     CustomerApplicationService customer_svc(customer_repository);
     AuthApplicationService auth_svc(account_repository);
+    NotificationApplicationService notification_svc(notification_repository);
+    AccountManagementService account_management_svc(account_repository, customer_repository, employee_repository);
     CatalogApplicationService catalog_svc(product_repository);
     OrderApplicationService order_svc(
         cart_repository,
@@ -220,7 +244,8 @@ int main() {
     ReturnManagementService return_mgmt_svc(
         return_repository,
         order_repository,
-        inventory_repository);
+        inventory_repository,
+        notification_repository);
     StoreManagementService store_mgmt_svc(
         product_repository,
         inventory_repository,
@@ -287,8 +312,10 @@ int main() {
         auth_svc,
         catalog_svc,
         cart_svc,
+        customer_svc,
         account_repository,
         customer_repository,
+        employee_repository,
         order_svc,
         review_svc,
         returns_svc,
@@ -297,6 +324,8 @@ int main() {
         payment_svc,
         shipping_svc,
         report_svc,
+        notification_svc,
+        account_management_svc,
         product_storefront_path);
 
     std::cout << "listening on port 8080\n";

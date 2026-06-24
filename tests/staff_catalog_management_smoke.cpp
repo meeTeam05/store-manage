@@ -75,12 +75,37 @@ int main() {
         Size{"M"},
         Color{"Black"},
         Money::from_minor(4900000)}));
+    auto updated_coat = staff_service.update_product(ProductDraft{
+        ProductId{"product-coat"},
+        "Tailored Coat",
+        Category::Tops,
+        "Refined black jacket",
+        "PreFall 2026",
+        ProductStatus::Draft});
+    assert(updated_coat);
+    assert(updated_coat.value().name() == "Tailored Coat");
+    assert(updated_coat.value().category() == Category::Tops);
+    assert(updated_coat.value().description() == "Refined black jacket");
+    assert(updated_coat.value().collection() == "PreFall 2026");
+    assert(updated_coat.value().status() == ProductStatus::Draft);
+    assert(updated_coat.value().variants().size() == 1);
+    assert(updated_coat.value().variants().front().id == VariantId{"variant-coat-m"});
     assert(staff_service.add_product_variant(ProductId{"product-dress"}, ProductVariantDraft{
         VariantId{"variant-dress-s"},
         "DRESS-IVY-S",
         Size{"S"},
         Color{"Ivory"},
         Money::from_minor(6500000)}));
+
+    auto missing_update = staff_service.update_product(ProductDraft{
+        ProductId{"missing-product"},
+        "Missing",
+        Category::Accessories,
+        "Missing",
+        "",
+        ProductStatus::Active});
+    assert(!missing_update);
+    assert(missing_update.error() == StoreManagementError::ProductNotFound);
 
     auto inventory = staff_service.set_inventory(VariantId{"variant-coat-m"}, 3);
     assert(inventory);
@@ -112,8 +137,20 @@ int main() {
         std::optional<std::string>{"Resort 2026"},
         std::optional<ProductStatus>{ProductStatus::Active},
         ProductSortMode::PriceAsc});
-    assert(black_outerwear.size() == 1);
-    assert(black_outerwear.front().id() == ProductId{"product-coat"});
+    assert(black_outerwear.empty());
+
+    auto tailored_tops = catalog_service.search_products(ProductSearchQuery{
+        std::optional<std::string>{"tailored"},
+        std::optional<Category>{Category::Tops},
+        std::optional<Size>{Size{"M"}},
+        std::optional<Color>{Color{"Black"}},
+        std::nullopt,
+        std::optional<Money>{Money::from_minor(5000000)},
+        std::optional<std::string>{"PreFall 2026"},
+        std::optional<ProductStatus>{ProductStatus::Draft},
+        ProductSortMode::PriceAsc});
+    assert(tailored_tops.size() == 1);
+    assert(tailored_tops.front().id() == ProductId{"product-coat"});
 
     auto sorted = catalog_service.search_products(ProductSearchQuery{
         std::nullopt,
@@ -125,7 +162,7 @@ int main() {
         std::optional<std::string>{"Resort 2026"},
         std::optional<ProductStatus>{ProductStatus::Active},
         ProductSortMode::PriceDesc});
-    assert(sorted.size() == 2);
+    assert(sorted.size() == 1);
     assert(sorted.front().id() == ProductId{"product-dress"});
 
     return 0;

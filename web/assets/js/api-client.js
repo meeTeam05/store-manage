@@ -2,10 +2,22 @@
   const baseUrl = window.STOREFRONT_API_BASE_URL || "";
 
   async function request(path, options = {}) {
+    const { skipAuth = false, headers: optionHeaders = {}, ...fetchOptions } = options;
+    const session = !skipAuth && window.storefrontState?.getSession
+      ? window.storefrontState.getSession()
+      : null;
+    const authToken = session?.authToken || "";
+    const headers = {
+      "Content-Type": "application/json",
+      ...optionHeaders
+    };
+    if (authToken && !headers.Authorization) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
     try {
       const response = await fetch(`${baseUrl}${path}`, {
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-        ...options
+        headers,
+        ...fetchOptions
       });
       const body = await response.json();
       if (!response.ok) {
@@ -22,12 +34,14 @@
     async signIn(username, passwordHash) {
       return request("/api/sign-in", {
         method: "POST",
+        skipAuth: true,
         body: JSON.stringify({ username, password_hash: passwordHash })
       });
     },
     async registerCustomer({ username, passwordHash, fullName, phone, address = {} }) {
       return request("/api/register", {
         method: "POST",
+        skipAuth: true,
         body: JSON.stringify({
           username,
           password_hash: passwordHash,
@@ -114,10 +128,12 @@
       }
       const customer = window.storefrontState ? window.storefrontState.getCustomerProfile() : null;
       const address = customer?.address || {};
-      const cartId = "cart-" + session.customerId + "-" + String(Date.now());
-      // Sync each cart item to the server cart
+      const cartId = `cart-${session.customerId}`;
       for (const item of cartItems) {
-        const r = await this.addToCart(cartId, session.customerId, item.variantId, item.quantity);
+        let r = await this.setCartQuantity(cartId, item.variantId, item.quantity);
+        if (!r.ok && r.error !== "API unavailable") {
+          r = await this.addToCart(cartId, session.customerId, item.variantId, item.quantity);
+        }
         if (!r.ok && r.error !== "API unavailable") {
           return { ok: false, error: `Cart sync failed: ${r.error}` };
         }
@@ -168,6 +184,15 @@
     async getOrderReturns(orderId) {
       return request(`/api/orders/${orderId}/returns`);
     },
+    async getCustomerNotifications(customerId) {
+      return request(`/api/customers/${customerId}/notifications`);
+    },
+    async markNotificationRead(customerId, notificationId) {
+      return request(`/api/customers/${customerId}/notifications/${notificationId}/read`, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+    },
 
     // Reviews
     async createReview({ orderId, reviewId, customerId, productId, variantId, rating, comment }) {
@@ -201,20 +226,35 @@
         })
       });
     },
-    async approveReturn(returnId) {
-      return request(`/api/returns/${returnId}/approve`, { method: "POST" });
+    async approveReturn(returnId, note = "") {
+      return request(`/api/returns/${returnId}/approve`, {
+        method: "POST",
+        body: JSON.stringify({ note })
+      });
     },
-    async rejectReturn(returnId) {
-      return request(`/api/returns/${returnId}/reject`, { method: "POST" });
+    async rejectReturn(returnId, note = "") {
+      return request(`/api/returns/${returnId}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ note })
+      });
     },
-    async restockReturn(returnId) {
-      return request(`/api/returns/${returnId}/restock`, { method: "POST" });
+    async restockReturn(returnId, note = "") {
+      return request(`/api/returns/${returnId}/restock`, {
+        method: "POST",
+        body: JSON.stringify({ note })
+      });
     },
-    async refundReturn(returnId) {
-      return request(`/api/returns/${returnId}/refund`, { method: "POST" });
+    async refundReturn(returnId, refundReference = "") {
+      return request(`/api/returns/${returnId}/refund`, {
+        method: "POST",
+        body: JSON.stringify({ refund_reference: refundReference })
+      });
     },
-    async closeReturn(returnId) {
-      return request(`/api/returns/${returnId}/close`, { method: "POST" });
+    async closeReturn(returnId, note = "") {
+      return request(`/api/returns/${returnId}/close`, {
+        method: "POST",
+        body: JSON.stringify({ note })
+      });
     },
     async getStaffReturns() {
       return request("/api/staff/returns");
@@ -232,6 +272,18 @@
           collection,
           status,
           image_urls_text: imageUrlsText
+        })
+      });
+    },
+    async updateProduct(productId, { name, category, description, collection, status = "Active" }) {
+      return request(`/api/staff/products/${productId}`, {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          category,
+          description,
+          collection,
+          status
         })
       });
     },
@@ -320,6 +372,38 @@
     },
     async getLowStock(threshold = 5) {
       return request(`/api/reports/low-stock?threshold=${threshold}`);
+    },
+
+    // Admin accounts
+    async getAdminAccounts({ role = "", status = "" } = {}) {
+      const params = new URLSearchParams();
+      if (role) params.set("role", role);
+      if (status) params.set("status", status);
+      const qs = params.toString();
+      return request(`/api/admin/accounts${qs ? `?${qs}` : ""}`);
+    },
+    async createManagedAccount({ role, username, passwordHash, fullName }) {
+      return request("/api/admin/accounts", {
+        method: "POST",
+        body: JSON.stringify({
+          role,
+          username,
+          password_hash: passwordHash,
+          full_name: fullName
+        })
+      });
+    },
+    async updateAccountStatus(accountId, status) {
+      return request(`/api/admin/accounts/${accountId}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      });
+    },
+    async resetAccountPassword(accountId, passwordHash) {
+      return request(`/api/admin/accounts/${accountId}/password`, {
+        method: "POST",
+        body: JSON.stringify({ password_hash: passwordHash })
+      });
     }
   };
 })();
