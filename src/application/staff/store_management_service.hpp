@@ -35,6 +35,7 @@ using fashion_store::domain::shared::VariantId;
 
 enum class StoreManagementError {
     ProductNotFound,
+    ProductAlreadyExists,
     ProductRuleViolation,
     InventoryNotFound,
     InvalidInventoryQuantity,
@@ -64,6 +65,10 @@ public:
           order_service_(order_service) {}
 
     Result<Product, StoreManagementError> create_product(const ProductDraft& draft) {
+        if (product_repository_.find_by_id(draft.id).has_value()) {
+            return Result<Product, StoreManagementError>::fail(StoreManagementError::ProductAlreadyExists);
+        }
+
         Product product(
             draft.id,
             draft.name,

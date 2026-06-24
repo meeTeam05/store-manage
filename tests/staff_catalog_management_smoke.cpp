@@ -58,6 +58,17 @@ int main() {
         ProductStatus::Active});
     assert(dress);
 
+    auto duplicate = staff_service.create_product(ProductDraft{
+        ProductId{"product-coat"},
+        "Replacement Coat",
+        Category::Outerwear,
+        "Should not overwrite existing product",
+        "Resort 2026",
+        ProductStatus::Active});
+    assert(!duplicate);
+    assert(duplicate.error() == StoreManagementError::ProductAlreadyExists);
+    assert(product_repository.list_all().size() == 2);
+
     assert(staff_service.add_product_variant(ProductId{"product-coat"}, ProductVariantDraft{
         VariantId{"variant-coat-m"},
         "COAT-BLK-M",
