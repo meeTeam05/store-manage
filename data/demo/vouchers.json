@@ -1,0 +1,11 @@
+[
+  {
+    "code": "WELCOME10",
+    "discount_type": "Percentage",
+    "discount_value": 10,
+    "min_purchase": 1000000,
+    "max_discount": 800000,
+    "days_valid": 30,
+    "usage_limit": 100
+  }
+]

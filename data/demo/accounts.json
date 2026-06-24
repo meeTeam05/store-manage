@@ -1,0 +1,35 @@
+[
+  {
+    "id": "account-001",
+    "username": "client001",
+    "password_hash": "hash:123456",
+    "role": "Customer",
+    "customer_profile": {
+      "id": "customer-001",
+      "name": "Nguyen Van A",
+      "phone": "0900000000",
+      "address": {
+        "recipient_name": "Nguyen Van A",
+        "phone": "0900000000",
+        "line1": "12 Nguyen Hue",
+        "line2": "",
+        "ward": "Ben Nghe",
+        "district": "District 1",
+        "city": "Ho Chi Minh City",
+        "country": "Vietnam"
+      }
+    }
+  },
+  {
+    "id": "account-002",
+    "username": "staff001",
+    "password_hash": "hash:staff123",
+    "role": "Staff"
+  },
+  {
+    "id": "account-003",
+    "username": "admin001",
+    "password_hash": "hash:admin123",
+    "role": "Admin"
+  }
+]

@@ -1,0 +1,155 @@
+[
+  {
+    "id": "product-001",
+    "name": "Structured Coat",
+    "category": "Outerwear",
+    "description": "Long-line black coat with quiet shoulder structure, fluid drape, and a disciplined silhouette for day-to-evening wear.",
+    "collection": "Maison Aureline 2026",
+    "images": [
+      "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "variants": [
+      {
+        "id": "variant-001-black-s",
+        "sku": "COAT-BLK-S",
+        "size": "S",
+        "color": "Black",
+        "price": 4900000,
+        "quantity": 10
+      },
+      {
+        "id": "variant-001-black-m",
+        "sku": "COAT-BLK-M",
+        "size": "M",
+        "color": "Black",
+        "price": 4900000,
+        "quantity": 12
+      },
+      {
+        "id": "variant-001-black-l",
+        "sku": "COAT-BLK-L",
+        "size": "L",
+        "color": "Black",
+        "price": 4900000,
+        "quantity": 8
+      },
+      {
+        "id": "variant-001-ivory-s",
+        "sku": "COAT-IVR-S",
+        "size": "S",
+        "color": "Ivory",
+        "price": 4900000,
+        "quantity": 9
+      },
+      {
+        "id": "variant-001-ivory-m",
+        "sku": "COAT-IVR-M",
+        "size": "M",
+        "color": "Ivory",
+        "price": 4900000,
+        "quantity": 9
+      }
+    ]
+  },
+  {
+    "id": "product-002",
+    "name": "Ivory Column Dress",
+    "category": "Dresses",
+    "description": "Fluid ivory column dress with a draped cowl neck, open back, and floor-skimming hem for elevated evening wear.",
+    "collection": "Maison Aureline 2026",
+    "images": [],
+    "variants": [
+      {
+        "id": "variant-002-ivory-s",
+        "sku": "DRESS-IVR-S",
+        "size": "S",
+        "color": "Ivory",
+        "price": 5600000,
+        "quantity": 5
+      },
+      {
+        "id": "variant-002-ivory-m",
+        "sku": "DRESS-IVR-M",
+        "size": "M",
+        "color": "Ivory",
+        "price": 5600000,
+        "quantity": 4
+      },
+      {
+        "id": "variant-002-ivory-l",
+        "sku": "DRESS-IVR-L",
+        "size": "L",
+        "color": "Ivory",
+        "price": 5600000,
+        "quantity": 3
+      },
+      {
+        "id": "variant-002-beige-s",
+        "sku": "DRESS-BEG-S",
+        "size": "S",
+        "color": "Beige",
+        "price": 5600000,
+        "quantity": 6
+      },
+      {
+        "id": "variant-002-beige-m",
+        "sku": "DRESS-BEG-M",
+        "size": "M",
+        "color": "Beige",
+        "price": 5600000,
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "id": "product-003",
+    "name": "Tailored Blazer",
+    "category": "Outerwear",
+    "description": "Classic double-breasted tailored blazer in charcoal wool, features structured shoulders and a modern relaxed cut.",
+    "collection": "Maison Aureline 2026",
+    "images": [],
+    "variants": [
+      {
+        "id": "variant-003-charcoal-s",
+        "sku": "BLZR-CHA-S",
+        "size": "S",
+        "color": "Charcoal",
+        "price": 3800000,
+        "quantity": 7
+      },
+      {
+        "id": "variant-003-charcoal-m",
+        "sku": "BLZR-CHA-M",
+        "size": "M",
+        "color": "Charcoal",
+        "price": 3800000,
+        "quantity": 8
+      },
+      {
+        "id": "variant-003-charcoal-l",
+        "sku": "BLZR-CHA-L",
+        "size": "L",
+        "color": "Charcoal",
+        "price": 3800000,
+        "quantity": 6
+      },
+      {
+        "id": "variant-003-black-s",
+        "sku": "BLZR-BLK-S",
+        "size": "S",
+        "color": "Black",
+        "price": 3800000,
+        "quantity": 5
+      },
+      {
+        "id": "variant-003-black-m",
+        "sku": "BLZR-BLK-M",
+        "size": "M",
+        "color": "Black",
+        "price": 3800000,
+        "quantity": 6
+      }
+    ]
+  }
+]

@@ -23,6 +23,7 @@ add_library(fashion_store_core
     src/domain/identity/account.cpp
     src/infrastructure/persistence/file/file_store.cpp
     src/infrastructure/persistence/file/file_repositories.cpp
+    src/infrastructure/demo_loader.cpp
 )
 
 target_include_directories(fashion_store_core PUBLIC src)

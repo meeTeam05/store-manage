@@ -1,0 +1,30 @@
+[
+  {
+    "id": "order-seed-001",
+    "customer_id": "customer-001",
+    "cart_id": "cart-seed-001",
+    "payment_method": "EWallet",
+    "voucher_code": "WELCOME10",
+    "items": [
+      {
+        "variant_id": "variant-001-black-m",
+        "quantity": 1
+      }
+    ],
+    "workflow": ["Paid", "Packed", "Shipped", "Delivered", "Completed"]
+  },
+  {
+    "id": "order-seed-002",
+    "customer_id": "customer-001",
+    "cart_id": "cart-seed-002",
+    "payment_method": "BankTransfer",
+    "voucher_code": "",
+    "items": [
+      {
+        "variant_id": "variant-001-ivory-s",
+        "quantity": 1
+      }
+    ],
+    "workflow": []
+  }
+]
