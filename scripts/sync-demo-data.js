@@ -51,8 +51,7 @@ try {
           district: addr.district || "",
           city: addr.city || "",
           country: addr.country || "Vietnam"
-        },
-        wishlist: []
+        }
       };
     });
 
