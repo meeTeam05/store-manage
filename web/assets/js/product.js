@@ -46,12 +46,12 @@
     row.innerHTML = values.map((value) => {
       const isDisabled = disabledValues.includes(value);
       return `
-        <button class="chip ${value === selected ? "is-active" : ""}" type="button" data-value="${escapeHtml(value)}" ${isDisabled ? "disabled" : ""}>
+        <button class="chip ${value === selected ? "is-active" : ""} ${isDisabled ? "is-unavailable" : ""}" type="button" data-value="${escapeHtml(value)}">
           ${escapeHtml(value)}
         </button>
       `;
     }).join("");
-    row.querySelectorAll("[data-value]:not([disabled])").forEach((button) => {
+    row.querySelectorAll("[data-value]").forEach((button) => {
       button.addEventListener("click", () => onSelect(String(button.dataset.value || "")));
     });
   }
