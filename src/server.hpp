@@ -710,40 +710,56 @@ inline void setup_server(
     report::ReportApplicationService&              report_svc,
     const std::filesystem::path&                   product_storefront_path)
 {
-    auto product_images_for = [&](const ProductId& product_id) {
-        const auto metadata = load_product_storefront_metadata(product_storefront_path);
+    const auto storefront_path = product_storefront_path;
+
+    auto product_images_for = [storefront_path](const ProductId& product_id) {
+        const auto metadata = load_product_storefront_metadata(storefront_path);
         const auto match = metadata.images_by_product.find(product_id.value);
         return match != metadata.images_by_product.end()
             ? match->second
             : std::vector<std::string>{};
     };
 
-    auto save_product_images = [&](const ProductId& product_id, const std::string& image_urls_text) {
-        auto metadata = load_product_storefront_metadata(product_storefront_path);
+    auto save_product_images = [storefront_path](const ProductId& product_id, const std::string& image_urls_text) {
+        auto metadata = load_product_storefront_metadata(storefront_path);
         const auto images = parse_image_urls_text(image_urls_text);
         if (images.empty()) {
             metadata.images_by_product.erase(product_id.value);
         } else {
             metadata.images_by_product[product_id.value] = images;
         }
-        save_product_storefront_metadata(product_storefront_path, metadata);
+        save_product_storefront_metadata(storefront_path, metadata);
     };
 
-    auto ser_product_with_storefront = [&](const Product& product) {
+    auto ser_product_with_storefront = [product_images_for](const Product& product) {
         return ser_product(product, product_images_for(product.id()));
     };
+
 
     // CORS preflight
     svr.Options(".*", [](const httplib::Request&, httplib::Response& res) {
         add_cors(res);
         res.set_content("", "text/plain");
     });
-
+    // Trang kiểm tra server
+    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        add_cors(res);
+        res.set_content(
+            "Fashion Store API Server is running. Try /api/products or POST /api/sign-in.",
+            "text/plain"
+        );
+    });
     // ── Auth ──────────────────────────────────────────────────────────────────
     svr.Post("/api/sign-in", [&](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         auto username = b.str("username");
         auto pw_hash  = b.str("password_hash", b.str("passwordHash"));
+        if (pw_hash.empty()) {
+            auto password = b.str("password");
+            if (!password.empty()) {
+                pw_hash = "hash:" + password;
+            }
+        }
         auto result   = auth_svc.sign_in(username, pw_hash);
         if (!result) {
             json_err(res, 401, "Invalid credentials");
@@ -774,7 +790,13 @@ inline void setup_server(
     svr.Post("/api/register", [&](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         const auto username = b.str("username");
-        const auto password_hash = b.str("password_hash", b.str("passwordHash"));
+        auto password_hash = b.str("password_hash", b.str("passwordHash"));
+        if (password_hash.empty()) {
+            auto password = b.str("password");
+            if (!password.empty()) {
+                password_hash = "hash:" + password;
+            }
+        }
         const auto full_name = b.str("full_name", b.str("fullName"));
         const auto phone = b.str("phone");
         if (username.empty() || password_hash.empty() || full_name.empty() || phone.empty()) {
@@ -835,7 +857,7 @@ inline void setup_server(
     });
 
     // ── Catalog ───────────────────────────────────────────────────────────────
-    svr.Get("/api/products", [&](const httplib::Request& req, httplib::Response& res) {
+    svr.Get("/api/products", [&, ser_product_with_storefront](const httplib::Request& req, httplib::Response& res) {
         catalog::ProductSearchQuery q;
         if (req.has_param("q"))        q.keyword  = req.get_param_value("q");
         if (req.has_param("category")) q.category = cat_from(req.get_param_value("category"));
@@ -849,15 +871,20 @@ inline void setup_server(
         for (const auto& p : products) arr.push_back(ser_product_with_storefront(p));
         json_ok(res, j_arr(arr));
     });
+    svr.Get(R"(/api/products/([^/]+))", [&, ser_product_with_storefront](const httplib::Request& req, httplib::Response& res) {
+    const auto product_id = req.matches[1].str();
 
-    svr.Get("/api/products/:id", [&](const httplib::Request& req, httplib::Response& res) {
-        auto p = catalog_svc.find_product(ProductId{req.path_params.at("id")});
-        if (!p) { json_err(res, 404, "Product not found"); return; }
-        json_ok(res, ser_product_with_storefront(*p));
+    auto p = catalog_svc.find_product(ProductId{product_id});
+    if (!p) {
+        json_err(res, 404, "Product not found");
+        return;
+    }
+
+    json_ok(res, ser_product_with_storefront(*p));
     });
 
-    svr.Get("/api/variants/:id", [&](const httplib::Request& req, httplib::Response& res) {
-        auto v = catalog_svc.find_variant(VariantId{req.path_params.at("id")});
+    svr.Get(R"(/api/variants/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
+        auto v = catalog_svc.find_variant(VariantId{req.matches[1].str()});
         if (!v) { json_err(res, 404, "Variant not found"); return; }
         json_ok(res, j_obj({
             {"variant_id",  j_str(v->variant.id.value)},
@@ -872,8 +899,8 @@ inline void setup_server(
     });
 
     // ── Cart ──────────────────────────────────────────────────────────────────
-    svr.Get("/api/customers/:id", [&](const httplib::Request& req, httplib::Response& res) {
-        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
+    svr.Get(R"(/api/customers/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
+        auto customer = customer_repo.find_by_id(CustomerId{req.matches[1].str()});
         if (!customer.has_value()) {
             json_err(res, 404, "Customer not found");
             return;
@@ -881,8 +908,8 @@ inline void setup_server(
         json_ok(res, ser_customer(*customer));
     });
 
-    svr.Post("/api/customers/:id/wishlist", [&](const httplib::Request& req, httplib::Response& res) {
-        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
+    svr.Post(R"(/api/customers/([^/]+)/wishlist)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto customer = customer_repo.find_by_id(CustomerId{req.matches[1].str()});
         if (!customer.has_value()) {
             json_err(res, 404, "Customer not found");
             return;
@@ -902,8 +929,8 @@ inline void setup_server(
         json_ok(res, ser_customer(*customer));
     });
 
-    svr.Post("/api/customers/:id/wishlist/remove", [&](const httplib::Request& req, httplib::Response& res) {
-        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
+    svr.Post(R"(/api/customers/([^/]+)/wishlist/remove)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto customer = customer_repo.find_by_id(CustomerId{req.matches[1].str()});
         if (!customer.has_value()) {
             json_err(res, 404, "Customer not found");
             return;
@@ -1003,44 +1030,44 @@ inline void setup_server(
     });
 
     // ── Orders ────────────────────────────────────────────────────────────────
-    svr.Get("/api/orders/:id", [&](const httplib::Request& req, httplib::Response& res) {
-        auto result = order_svc.get_order(OrderId{req.path_params.at("id")});
+    svr.Get(R"(/api/orders/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
+        auto result = order_svc.get_order(OrderId{req.matches[1].str()});
         if (!result) { json_err(res, 404, "Order not found"); return; }
         json_ok(res, ser_order(result.value()));
     });
 
-    svr.Get("/api/customers/:id/orders", [&](const httplib::Request& req, httplib::Response& res) {
-        auto orders = order_svc.get_customer_orders(CustomerId{req.path_params.at("id")});
+    svr.Get(R"(/api/customers/([^/]+)/orders)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto orders = order_svc.get_customer_orders(CustomerId{req.matches[1].str()});
         std::vector<std::string> arr;
         for (const auto& o : orders) arr.push_back(ser_order(o));
         json_ok(res, j_arr(arr));
     });
 
-    svr.Post("/api/customers/:customer_id/orders/:id/cancel", [&](const httplib::Request& req, httplib::Response& res) {
+    svr.Post(R"(/api/customers/([^/]+)/orders/([^/]+)/cancel)", [&](const httplib::Request& req, httplib::Response& res) {
         auto result = order_svc.cancel_customer_order(
-            CustomerId{req.path_params.at("customer_id")},
-            OrderId{req.path_params.at("id")});
+            CustomerId{req.matches[1].str()},
+            OrderId{req.matches[2].str()});
         if (!result) { json_err(res, 400, "Cancel failed"); return; }
         json_ok(res, ser_order(result.value()));
     });
 
-    svr.Post("/api/orders/:id/pay", [&](const httplib::Request& req, httplib::Response& res) {
-        auto result = order_svc.mark_order_paid(OrderId{req.path_params.at("id")});
+    svr.Post(R"(/api/orders/([^/]+)/pay)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto result = order_svc.mark_order_paid(OrderId{req.matches[1].str()});
         if (!result) { json_err(res, 400, "Mark paid failed"); return; }
         json_ok(res, ser_order(result.value()));
     });
 
-    svr.Post("/api/orders/:id/advance", [&](const httplib::Request& req, httplib::Response& res) {
+    svr.Post(R"(/api/orders/([^/]+)/advance)", [&](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         auto result = order_svc.advance_order_status(
-            OrderId{req.path_params.at("id")},
+            OrderId{req.matches[1].str()},
             ostatus_from(b.str("status")));
         if (!result) { json_err(res, 400, "Advance status failed"); return; }
         json_ok(res, ser_order(result.value()));
     });
 
-    svr.Post("/api/orders/:id/cancel", [&](const httplib::Request& req, httplib::Response& res) {
-        auto result = order_svc.cancel_order(OrderId{req.path_params.at("id")});
+    svr.Post(R"(/api/orders/([^/]+)/cancel)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto result = order_svc.cancel_order(OrderId{req.matches[1].str()});
         if (!result) { json_err(res, 400, "Cancel failed"); return; }
         json_ok(res, ser_order(result.value()));
     });
@@ -1063,15 +1090,15 @@ inline void setup_server(
         json_ok(res, ser_review(result.value()));
     });
 
-    svr.Get("/api/products/:id/reviews", [&](const httplib::Request& req, httplib::Response& res) {
-        auto reviews = review_svc.get_product_reviews(ProductId{req.path_params.at("id")});
+    svr.Get(R"(/api/products/([^/]+)/reviews)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto reviews = review_svc.get_product_reviews(ProductId{req.matches[1].str()});
         std::vector<std::string> arr;
         for (const auto& rv : reviews) arr.push_back(ser_review(rv));
         json_ok(res, j_arr(arr));
     });
 
-    svr.Get("/api/customers/:id/reviews", [&](const httplib::Request& req, httplib::Response& res) {
-        auto reviews = review_svc.get_customer_reviews(CustomerId{req.path_params.at("id")});
+    svr.Get(R"(/api/customers/([^/]+)/reviews)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto reviews = review_svc.get_customer_reviews(CustomerId{req.matches[1].str()});
         std::vector<std::string> arr;
         for (const auto& rv : reviews) arr.push_back(ser_review(rv));
         json_ok(res, j_arr(arr));
@@ -1090,8 +1117,8 @@ inline void setup_server(
         json_ok(res, ser_return(result.value()));
     });
 
-    svr.Get("/api/orders/:id/returns", [&](const httplib::Request& req, httplib::Response& res) {
-        auto rets = returns_svc.get_order_returns(OrderId{req.path_params.at("id")});
+    svr.Get(R"(/api/orders/([^/]+)/returns)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto rets = returns_svc.get_order_returns(OrderId{req.matches[1].str()});
         std::vector<std::string> arr;
         for (const auto& r : rets) arr.push_back(ser_return(r));
         json_ok(res, j_arr(arr));
@@ -1100,7 +1127,7 @@ inline void setup_server(
     // ── Returns (staff) ───────────────────────────────────────────────────────
     auto make_return_action = [&](const std::string& action) {
         return [&, action](const httplib::Request& req, httplib::Response& res) {
-            ReturnId rid{req.path_params.at("id")};
+            ReturnId rid{req.matches[1].str()};
             std::optional<ReturnRequest> updated;
             if (action == "approve") {
                 auto r = return_mgmt_svc.approve_return(rid);
@@ -1126,14 +1153,14 @@ inline void setup_server(
         };
     };
 
-    svr.Post("/api/returns/:id/approve",  make_return_action("approve"));
-    svr.Post("/api/returns/:id/reject",   make_return_action("reject"));
-    svr.Post("/api/returns/:id/restock",  make_return_action("restock"));
-    svr.Post("/api/returns/:id/refund",   make_return_action("refund"));
-    svr.Post("/api/returns/:id/close",    make_return_action("close"));
+    svr.Post(R"(/api/returns/([^/]+)/approve)",  make_return_action("approve"));
+    svr.Post(R"(/api/returns/([^/]+)/reject)",   make_return_action("reject"));
+    svr.Post(R"(/api/returns/([^/]+)/restock)",  make_return_action("restock"));
+    svr.Post(R"(/api/returns/([^/]+)/refund)",   make_return_action("refund"));
+    svr.Post(R"(/api/returns/([^/]+)/close)",    make_return_action("close"));
 
     // ── Staff ─────────────────────────────────────────────────────────────────
-    svr.Post("/api/staff/products", [&](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/staff/products", [&, save_product_images, ser_product_with_storefront](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         staff::ProductDraft draft{
             ProductId{b.str("product_id")},
@@ -1149,8 +1176,8 @@ inline void setup_server(
         json_ok(res, ser_product_with_storefront(result.value()));
     });
 
-    svr.Post("/api/staff/products/:id/images", [&](const httplib::Request& req, httplib::Response& res) {
-        const auto product_id = ProductId{req.path_params.at("id")};
+    svr.Post(R"(/api/staff/products/([^/]+)/images)", [&, save_product_images, ser_product_with_storefront](const httplib::Request& req, httplib::Response& res) {
+        const auto product_id = ProductId{req.matches[1].str()};
         auto product = catalog_svc.find_product(product_id);
         if (!product) { json_err(res, 404, "Product not found"); return; }
         auto b = parse_body(req.body);
@@ -1160,28 +1187,60 @@ inline void setup_server(
         json_ok(res, ser_product_with_storefront(*product));
     });
 
-    svr.Post("/api/staff/products/:id/status", [&](const httplib::Request& req, httplib::Response& res) {
+    svr.Post(R"(/api/staff/products/([^/]+)/status)", [&, ser_product_with_storefront](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         auto result = store_mgmt_svc.update_product_status(
-            ProductId{req.path_params.at("id")},
+            ProductId{req.matches[1].str()},
             pstatus_from(b.str("status")));
         if (!result) { json_err(res, 400, "Update status failed"); return; }
         json_ok(res, ser_product_with_storefront(result.value()));
     });
 
-    svr.Post("/api/staff/products/:id/variants", [&](const httplib::Request& req, httplib::Response& res) {
-        auto b = parse_body(req.body);
-        ProductVariantDraft vd{
-            VariantId{b.str("variant_id")},
-            b.str("sku"),
-            Size{b.str("size")},
-            Color{b.str("color")},
-            Money::from_minor(b.num("price_minor"))
-        };
-        auto result = store_mgmt_svc.add_product_variant(
-            ProductId{req.path_params.at("id")}, vd);
-        if (!result) { json_err(res, 400, "Add variant failed"); return; }
-        json_ok(res, ser_product_with_storefront(result.value()));
+    svr.Post(R"(/api/staff/products/([^/]+)/variants)", [&, ser_product_with_storefront](const httplib::Request& req, httplib::Response& res) {
+    const auto product_id = req.matches[1].str();
+    auto b = parse_body(req.body);
+
+    const auto variant_id = VariantId{b.str("variant_id")};
+
+    const auto price_minor = b.num("price_minor", b.num("price", 0));
+
+    if (b.str("variant_id").empty() || b.str("sku").empty() ||
+        b.str("size").empty() || b.str("color").empty() ||
+        price_minor <= 0) {
+        json_err(res, 400, "Missing variant fields");
+        return;
+    }
+
+    ProductVariantDraft vd{
+        variant_id,
+        b.str("sku"),
+        Size{b.str("size")},
+        Color{b.str("color")},
+        Money::from_minor(price_minor)
+    };
+
+    auto result = store_mgmt_svc.add_product_variant(ProductId{product_id}, vd);
+    if (!result) {
+        json_err(res, 400, "Add variant failed");
+        return;
+    }
+
+    const auto initial_stock = static_cast<int>(b.num("initial_stock", b.num("on_hand", 0)));
+    if (initial_stock > 0) {
+        auto inv_result = store_mgmt_svc.set_inventory(variant_id, initial_stock, 0);
+        if (!inv_result) {
+            json_err(res, 400, "Variant added but inventory setup failed");
+            return;
+        }
+    }
+
+    auto p = catalog_svc.find_product(ProductId{product_id});
+    if (!p) {
+        json_err(res, 404, "Product not found after adding variant");
+        return;
+    }
+
+    json_ok(res, ser_product_with_storefront(*p));
     });
 
     svr.Post("/api/staff/inventory", [&](const httplib::Request& req, httplib::Response& res) {
@@ -1200,10 +1259,10 @@ inline void setup_server(
         }));
     });
 
-    svr.Post("/api/staff/inventory/:id/restock", [&](const httplib::Request& req, httplib::Response& res) {
+    svr.Post(R"(/api/staff/inventory/([^/]+)/restock)", [&](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         auto result = store_mgmt_svc.restock_inventory(
-            VariantId{req.path_params.at("id")},
+            VariantId{req.matches[1].str()},
             static_cast<int>(b.num("quantity")));
         if (!result) { json_err(res, 400, "Restock failed"); return; }
         const auto& inv = result.value();
@@ -1239,17 +1298,17 @@ inline void setup_server(
         json_ok(res, j_arr(arr));
     });
 
-    svr.Post("/api/staff/orders/:id/advance", [&](const httplib::Request& req, httplib::Response& res) {
+    svr.Post(R"(/api/staff/orders/([^/]+)/advance)", [&](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);
         auto result = store_mgmt_svc.advance_order_status(
-            OrderId{req.path_params.at("id")},
+            OrderId{req.matches[1].str()},
             ostatus_from(b.str("status")));
         if (!result) { json_err(res, 400, "Advance failed"); return; }
         json_ok(res, ser_order(result.value()));
     });
 
-    svr.Post("/api/staff/orders/:id/cancel", [&](const httplib::Request& req, httplib::Response& res) {
-        auto result = store_mgmt_svc.cancel_order(OrderId{req.path_params.at("id")});
+    svr.Post(R"(/api/staff/orders/([^/]+)/cancel)", [&](const httplib::Request& req, httplib::Response& res) {
+        auto result = store_mgmt_svc.cancel_order(OrderId{req.matches[1].str()});
         if (!result) { json_err(res, 400, "Cancel failed"); return; }
         json_ok(res, ser_order(result.value()));
     });
