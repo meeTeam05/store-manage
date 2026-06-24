@@ -10,6 +10,7 @@ namespace fashion_store::domain::catalog {
 struct CatalogVariantView {
     ProductId product_id;
     std::string product_name;
+    ProductStatus product_status;
     ProductVariant variant;
 };
 

@@ -10,6 +10,7 @@
 #include "domain/customer/customer.hpp"
 #include "domain/identity/account.hpp"
 #include "domain/inventory/inventory_repository.hpp"
+#include "domain/notification/notification.hpp"
 #include "domain/order/order_repository.hpp"
 #include "domain/pricing/voucher_repository.hpp"
 #include "domain/review/review.hpp"
@@ -29,6 +30,8 @@ using fashion_store::domain::identity::Account;
 using fashion_store::domain::identity::IAccountRepository;
 using fashion_store::domain::inventory::IInventoryRepository;
 using fashion_store::domain::inventory::InventoryItem;
+using fashion_store::domain::notification::INotificationRepository;
+using fashion_store::domain::notification::Notification;
 using fashion_store::domain::order::IOrderRepository;
 using fashion_store::domain::order::Order;
 using fashion_store::domain::pricing::IVoucherRepository;
@@ -43,6 +46,7 @@ using fashion_store::domain::shared::CartId;
 using fashion_store::domain::shared::CustomerId;
 using fashion_store::domain::shared::AccountId;
 using fashion_store::domain::shared::EmployeeId;
+using fashion_store::domain::shared::NotificationId;
 using fashion_store::domain::shared::OrderId;
 using fashion_store::domain::shared::ProductId;
 using fashion_store::domain::shared::ReturnId;
@@ -62,7 +66,7 @@ public:
         for (const auto& [_, product] : products_) {
             const auto* variant = product.find_variant(variant_id);
             if (variant != nullptr) {
-                return CatalogVariantView{product.id(), product.name(), *variant};
+                return CatalogVariantView{product.id(), product.name(), product.status(), *variant};
             }
         }
         return std::nullopt;
@@ -131,6 +135,15 @@ public:
         return std::nullopt;
     }
 
+    std::vector<Account> list_all() const override {
+        std::vector<Account> accounts;
+        accounts.reserve(accounts_.size());
+        for (const auto& [_, account] : accounts_) {
+            accounts.push_back(account);
+        }
+        return accounts;
+    }
+
     void save(const Account& account) override {
         accounts_.insert_or_assign(account.id().value, account);
     }
@@ -156,6 +169,15 @@ public:
             }
         }
         return std::nullopt;
+    }
+
+    std::vector<Employee> list_all() const override {
+        std::vector<Employee> employees;
+        employees.reserve(employees_.size());
+        for (const auto& [_, employee] : employees_) {
+            employees.push_back(employee);
+        }
+        return employees;
     }
 
     void save(const Employee& employee) override {
@@ -338,6 +360,41 @@ public:
 
 private:
     std::vector<ReturnRequest> requests_;
+};
+
+class InMemoryNotificationRepository : public INotificationRepository {
+public:
+    std::optional<Notification> find_by_id(const NotificationId& notification_id) const override {
+        for (const auto& notification : notifications_) {
+            if (notification.id() == notification_id) {
+                return notification;
+            }
+        }
+        return std::nullopt;
+    }
+
+    std::vector<Notification> find_by_customer_id(const CustomerId& customer_id) const override {
+        std::vector<Notification> result;
+        for (const auto& notification : notifications_) {
+            if (notification.customer_id() == customer_id) {
+                result.push_back(notification);
+            }
+        }
+        return result;
+    }
+
+    void save(const Notification& notification) override {
+        for (auto& existing : notifications_) {
+            if (existing.id() == notification.id()) {
+                existing = notification;
+                return;
+            }
+        }
+        notifications_.push_back(notification);
+    }
+
+private:
+    std::vector<Notification> notifications_;
 };
 
 }  // namespace fashion_store::infrastructure::persistence::in_memory

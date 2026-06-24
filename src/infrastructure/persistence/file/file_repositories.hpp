@@ -7,10 +7,12 @@
 #include "domain/customer/customer.hpp"
 #include "domain/identity/account.hpp"
 #include "domain/inventory/inventory_repository.hpp"
+#include "domain/notification/notification.hpp"
 #include "domain/order/order_repository.hpp"
 #include "domain/pricing/voucher_repository.hpp"
 #include "domain/review/review.hpp"
 #include "domain/returns/return_request.hpp"
+#include "domain/staff/employee.hpp"
 
 namespace fashion_store::infrastructure::persistence::file {
 
@@ -90,6 +92,7 @@ public:
         const fashion_store::domain::shared::AccountId& account_id) const override;
     std::optional<fashion_store::domain::identity::Account> find_by_username(
         const std::string& username) const override;
+    std::vector<fashion_store::domain::identity::Account> list_all() const override;
     void save(const fashion_store::domain::identity::Account& account) override;
 
 private:
@@ -105,6 +108,21 @@ public:
     std::optional<fashion_store::domain::customer::Customer> find_by_account_id(
         const fashion_store::domain::shared::AccountId& account_id) const override;
     void save(const fashion_store::domain::customer::Customer& customer) override;
+
+private:
+    std::filesystem::path path_;
+};
+
+class FileEmployeeRepository : public fashion_store::domain::staff::IEmployeeRepository {
+public:
+    explicit FileEmployeeRepository(std::filesystem::path path);
+
+    std::optional<fashion_store::domain::staff::Employee> find_by_id(
+        const fashion_store::domain::shared::EmployeeId& employee_id) const override;
+    std::optional<fashion_store::domain::staff::Employee> find_by_account_id(
+        const fashion_store::domain::shared::AccountId& account_id) const override;
+    std::vector<fashion_store::domain::staff::Employee> list_all() const override;
+    void save(const fashion_store::domain::staff::Employee& employee) override;
 
 private:
     std::filesystem::path path_;
@@ -133,6 +151,20 @@ public:
     std::vector<fashion_store::domain::returns::ReturnRequest> find_by_order_id(
         const fashion_store::domain::shared::OrderId& order_id) const override;
     void save(const fashion_store::domain::returns::ReturnRequest& request) override;
+
+private:
+    std::filesystem::path path_;
+};
+
+class FileNotificationRepository : public fashion_store::domain::notification::INotificationRepository {
+public:
+    explicit FileNotificationRepository(std::filesystem::path path);
+
+    std::optional<fashion_store::domain::notification::Notification> find_by_id(
+        const fashion_store::domain::shared::NotificationId& notification_id) const override;
+    std::vector<fashion_store::domain::notification::Notification> find_by_customer_id(
+        const fashion_store::domain::shared::CustomerId& customer_id) const override;
+    void save(const fashion_store::domain::notification::Notification& notification) override;
 
 private:
     std::filesystem::path path_;

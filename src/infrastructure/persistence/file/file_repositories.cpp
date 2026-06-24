@@ -27,6 +27,8 @@ using fashion_store::domain::identity::Account;
 using fashion_store::domain::identity::AccountStatus;
 using fashion_store::domain::identity::Role;
 using fashion_store::domain::inventory::InventoryItem;
+using fashion_store::domain::notification::Notification;
+using fashion_store::domain::notification::NotificationType;
 using fashion_store::domain::order::Order;
 using fashion_store::domain::order::OrderItem;
 using fashion_store::domain::order::OrderStatus;
@@ -37,11 +39,13 @@ using fashion_store::domain::pricing::Voucher;
 using fashion_store::domain::review::Review;
 using fashion_store::domain::returns::ReturnRequest;
 using fashion_store::domain::returns::ReturnStatus;
+using fashion_store::domain::staff::Employee;
 using fashion_store::domain::shared::AccountId;
 using fashion_store::domain::shared::CartId;
 using fashion_store::domain::shared::Color;
 using fashion_store::domain::shared::CustomerId;
 using fashion_store::domain::shared::Money;
+using fashion_store::domain::shared::NotificationId;
 using fashion_store::domain::shared::OrderId;
 using fashion_store::domain::shared::OrderItemId;
 using fashion_store::domain::shared::ProductId;
@@ -69,6 +73,12 @@ std::int64_t to_epoch(std::chrono::system_clock::time_point time_point) {
 template <typename Enum>
 Enum enum_from_int(int value) {
     return static_cast<Enum>(value);
+}
+
+std::string read_quoted_field(std::istringstream& input) {
+    std::string value;
+    input >> std::quoted(value);
+    return value;
 }
 
 std::string serialize_address(const ShippingAddress& address) {
@@ -589,6 +599,41 @@ void save_customers(const std::filesystem::path& path, const std::vector<Custome
     write_all_lines(path, lines);
 }
 
+std::vector<Employee> load_employees(const std::filesystem::path& path) {
+    std::vector<Employee> employees;
+    for (const auto& line : read_all_lines(path)) {
+        std::istringstream input(line);
+        std::string tag;
+        input >> tag;
+        if (tag != "E") {
+            continue;
+        }
+        const auto employee_id = read_quoted_field(input);
+        const auto account_id = read_quoted_field(input);
+        const auto full_name = read_quoted_field(input);
+        const auto position = read_quoted_field(input);
+        employees.emplace_back(
+            fashion_store::domain::shared::EmployeeId{employee_id},
+            AccountId{account_id},
+            full_name,
+            position);
+    }
+    return employees;
+}
+
+void save_employees(const std::filesystem::path& path, const std::vector<Employee>& employees) {
+    std::vector<std::string> lines;
+    for (const auto& employee : employees) {
+        std::ostringstream output;
+        output << "E " << std::quoted(employee.id().value) << '\t'
+               << std::quoted(employee.account_id().value) << '\t'
+               << std::quoted(employee.full_name()) << '\t'
+               << std::quoted(employee.position());
+        lines.push_back(output.str());
+    }
+    write_all_lines(path, lines);
+}
+
 std::vector<Review> load_reviews(const std::filesystem::path& path) {
     std::vector<Review> reviews;
     for (const auto& line : read_all_lines(path)) {
@@ -681,6 +726,77 @@ void save_returns(const std::filesystem::path& path, const std::vector<ReturnReq
     write_all_lines(path, lines);
 }
 
+std::vector<Notification> load_notifications(const std::filesystem::path& path) {
+    std::vector<Notification> notifications;
+    for (const auto& line : read_all_lines(path)) {
+        std::istringstream input(line);
+        std::string tag;
+        input >> tag;
+        if (tag != "N") {
+            continue;
+        }
+        const auto notification_id = read_quoted_field(input);
+        const auto customer_id = read_quoted_field(input);
+        int type = 0;
+        input >> type;
+        const auto title = read_quoted_field(input);
+        const auto message = read_quoted_field(input);
+        bool has_return_id = false;
+        input >> has_return_id;
+        std::optional<ReturnId> return_id;
+        if (has_return_id) {
+            return_id = ReturnId{read_quoted_field(input)};
+        }
+        const auto return_status = read_quoted_field(input);
+        bool has_extra_detail = false;
+        input >> has_extra_detail;
+        std::optional<std::string> extra_detail;
+        if (has_extra_detail) {
+            extra_detail = read_quoted_field(input);
+        }
+        const auto created_at_iso = read_quoted_field(input);
+        bool is_read = false;
+        input >> is_read;
+        notifications.emplace_back(
+            NotificationId{notification_id},
+            CustomerId{customer_id},
+            enum_from_int<NotificationType>(type),
+            title,
+            message,
+            return_id,
+            return_status,
+            extra_detail,
+            created_at_iso,
+            is_read);
+    }
+    return notifications;
+}
+
+void save_notifications(const std::filesystem::path& path, const std::vector<Notification>& notifications) {
+    std::vector<std::string> lines;
+    for (const auto& notification : notifications) {
+        std::ostringstream output;
+        output << "N " << std::quoted(notification.id().value) << '\t'
+               << std::quoted(notification.customer_id().value) << '\t'
+               << static_cast<int>(notification.type()) << '\t'
+               << std::quoted(notification.title()) << '\t'
+               << std::quoted(notification.message()) << '\t'
+               << notification.return_id().has_value() << '\t';
+        if (notification.return_id().has_value()) {
+            output << std::quoted(notification.return_id()->value) << '\t';
+        }
+        output << std::quoted(notification.return_status()) << '\t'
+               << notification.extra_detail().has_value() << '\t';
+        if (notification.extra_detail().has_value()) {
+            output << std::quoted(*notification.extra_detail()) << '\t';
+        }
+        output << std::quoted(notification.created_at_iso()) << '\t'
+               << notification.is_read();
+        lines.push_back(output.str());
+    }
+    write_all_lines(path, lines);
+}
+
 }  // namespace
 
 FileProductRepository::FileProductRepository(std::filesystem::path path) : path_(std::move(path)) {}
@@ -698,7 +814,7 @@ std::optional<CatalogVariantView> FileProductRepository::find_variant(const Vari
     for (const auto& product : load_products(path_)) {
         const auto* variant = product.find_variant(variant_id);
         if (variant != nullptr) {
-            return CatalogVariantView{product.id(), product.name(), *variant};
+            return CatalogVariantView{product.id(), product.name(), product.status(), *variant};
         }
     }
     return std::nullopt;
@@ -879,6 +995,10 @@ std::optional<Account> FileAccountRepository::find_by_username(const std::string
     return std::nullopt;
 }
 
+std::vector<Account> FileAccountRepository::list_all() const {
+    return load_accounts(path_);
+}
+
 void FileAccountRepository::save(const Account& account) {
     auto accounts = load_accounts(path_);
     bool replaced = false;
@@ -929,6 +1049,46 @@ void FileCustomerRepository::save(const Customer& customer) {
         customers.push_back(customer);
     }
     save_customers(path_, customers);
+}
+
+FileEmployeeRepository::FileEmployeeRepository(std::filesystem::path path) : path_(std::move(path)) {}
+
+std::optional<Employee> FileEmployeeRepository::find_by_id(const fashion_store::domain::shared::EmployeeId& employee_id) const {
+    for (const auto& employee : load_employees(path_)) {
+        if (employee.id() == employee_id) {
+            return employee;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<Employee> FileEmployeeRepository::find_by_account_id(const AccountId& account_id) const {
+    for (const auto& employee : load_employees(path_)) {
+        if (employee.account_id() == account_id) {
+            return employee;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<Employee> FileEmployeeRepository::list_all() const {
+    return load_employees(path_);
+}
+
+void FileEmployeeRepository::save(const Employee& employee) {
+    auto employees = load_employees(path_);
+    bool replaced = false;
+    for (auto& existing : employees) {
+        if (existing.id() == employee.id()) {
+            existing = employee;
+            replaced = true;
+            break;
+        }
+    }
+    if (!replaced) {
+        employees.push_back(employee);
+    }
+    save_employees(path_, employees);
 }
 
 FileReviewRepository::FileReviewRepository(std::filesystem::path path) : path_(std::move(path)) {}
@@ -1004,6 +1164,43 @@ void FileReturnRepository::save(const ReturnRequest& request) {
         requests.push_back(request);
     }
     save_returns(path_, requests);
+}
+
+FileNotificationRepository::FileNotificationRepository(std::filesystem::path path) : path_(std::move(path)) {}
+
+std::optional<Notification> FileNotificationRepository::find_by_id(const NotificationId& notification_id) const {
+    for (const auto& notification : load_notifications(path_)) {
+        if (notification.id() == notification_id) {
+            return notification;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<Notification> FileNotificationRepository::find_by_customer_id(const CustomerId& customer_id) const {
+    std::vector<Notification> result;
+    for (const auto& notification : load_notifications(path_)) {
+        if (notification.customer_id() == customer_id) {
+            result.push_back(notification);
+        }
+    }
+    return result;
+}
+
+void FileNotificationRepository::save(const Notification& notification) {
+    auto notifications = load_notifications(path_);
+    bool replaced = false;
+    for (auto& existing : notifications) {
+        if (existing.id() == notification.id()) {
+            existing = notification;
+            replaced = true;
+            break;
+        }
+    }
+    if (!replaced) {
+        notifications.push_back(notification);
+    }
+    save_notifications(path_, notifications);
 }
 
 }  // namespace fashion_store::infrastructure::persistence::file
