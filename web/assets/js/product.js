@@ -7,7 +7,6 @@
   const sizeRow = document.getElementById("size-row");
   const colorRow = document.getElementById("color-row");
   const addToCartButton = document.getElementById("add-to-cart");
-  const wishlistButton = document.getElementById("wishlist-link");
   const status = document.getElementById("product-status");
 
   function escapeHtml(value) {
@@ -28,7 +27,6 @@
     title.textContent = "Product unavailable";
     status.textContent = "No product could be loaded from the catalog.";
     addToCartButton.disabled = true;
-    wishlistButton.hidden = true;
     return;
   }
 
@@ -90,18 +88,6 @@
       : "Selected variant is out of stock.";
   }
 
-  function renderWishlistButton() {
-    const session = window.storefrontState.getSession();
-    if (!session || !session.customerId) {
-      wishlistButton.textContent = "Sign In To Save";
-      wishlistButton.href = `login.html?returnTo=${encodeURIComponent(`product.html?id=${product.productId}`)}`;
-      return;
-    }
-    const saved = window.storefrontState.isInWishlist(product.productId);
-    wishlistButton.textContent = saved ? "Remove From Wishlist" : "Save To Wishlist";
-    wishlistButton.href = "wishlist.html";
-  }
-
   addToCartButton.addEventListener("click", async () => {
     if (!selectedVariant) return;
     addToCartButton.disabled = true;
@@ -112,17 +98,5 @@
     addToCartButton.disabled = selectedVariant.stockQuantity <= 0;
   });
 
-  wishlistButton.addEventListener("click", async (event) => {
-    const session = window.storefrontState.getSession();
-    if (!session || !session.customerId) return;
-    event.preventDefault();
-    const result = await window.storefrontState.toggleWishlist(product.productId);
-    status.textContent = result.ok
-      ? (result.saved ? `Saved ${product.name} to wishlist.` : `Removed ${product.name} from wishlist.`)
-      : result.error;
-    if (result.ok) renderWishlistButton();
-  });
-
   renderOptions();
-  renderWishlistButton();
 })();

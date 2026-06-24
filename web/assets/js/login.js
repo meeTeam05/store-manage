@@ -31,13 +31,13 @@ function targetPathForRole(role) {
   if (role === "Staff" || role === 1 || role === "Manager" || role === 2) {
     return "staff.html";
   }
-  return "cart.html";
+  return "index.html";
 }
 
 function requestedReturnPath() {
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo");
-  const allowedTargets = new Set(["index.html", "product.html", "cart.html", "payment.html", "orders.html", "wishlist.html"]);
+  const allowedTargets = new Set(["index.html", "product.html", "cart.html", "payment.html", "orders.html"]);
   return allowedTargets.has(String(returnTo)) ? String(returnTo) : null;
 }
 
@@ -92,6 +92,6 @@ if (registerForm && registerStatusElement) {
     registerStatusElement.textContent = `Registered and signed in as ${name}.`;
     registerStatusElement.dataset.state = "success";
     const returnTo = requestedReturnPath();
-    window.location.href = returnTo || "cart.html";
+    window.location.href = returnTo || "index.html";
   });
 }

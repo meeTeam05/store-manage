@@ -238,10 +238,7 @@
       fullName,
       phone,
       city,
-      address,
-      wishlist: Array.isArray(customer?.wishlist)
-        ? Array.from(new Set(customer.wishlist.map((entry) => String(entry).trim()).filter(Boolean)))
-        : []
+      address
     };
   }
 
@@ -430,8 +427,7 @@
               fullName: cleanFullName,
               phone: cleanPhone,
               city: cleanCity,
-              address,
-              wishlist: []
+              address
             });
         const session = buildSession(account, customer);
         writeJson(storageKeys.session, session);
@@ -461,8 +457,7 @@
       fullName: cleanFullName,
       phone: cleanPhone,
       city: cleanCity,
-      address,
-      wishlist: []
+      address
     });
     persistAccounts([...accounts, account]);
     persistCustomers([...getCustomers(), customer]);
@@ -867,7 +862,7 @@
     if (index < 0) {
       return { ok: false, error: "Customer profile not found." };
     }
-    const current = { ...customers[index], address: { ...customers[index].address }, wishlist: [...customers[index].wishlist] };
+    const current = { ...customers[index], address: { ...customers[index].address } };
     const updateResult = updater(current);
     if (updateResult && updateResult.ok === false) {
       return updateResult;
@@ -877,19 +872,7 @@
     return { ok: true, customer: customers[index] };
   }
 
-  function isInWishlist(productId) {
-    const customer = getCustomerProfile();
-    return Boolean(customer && customer.wishlist.includes(productId));
-  }
 
-  function getWishlistProducts() {
-    const customer = getCustomerProfile();
-    if (!customer) {
-      return [];
-    }
-    const wishlist = new Set(customer.wishlist);
-    return getProducts().filter((entry) => wishlist.has(entry.productId));
-  }
 
   function getCart() {
     return readJson(storageKeys.cart, []);
@@ -956,43 +939,7 @@
     return addToCart(productId, variantId, quantity);
   }
 
-  async function toggleWishlist(productId) {
-    const session = getSession();
-    if (!session || !session.customerId) {
-      return { ok: false, error: "Sign in first to use wishlist." };
-    }
 
-    const saved = isInWishlist(productId);
-    if (window.storefrontApi) {
-      const response = saved
-        ? await window.storefrontApi.removeFromWishlist(session.customerId, productId)
-        : await window.storefrontApi.addToWishlist(session.customerId, productId);
-      if (response.ok && response.data) {
-        return {
-          ok: true,
-          saved: !saved,
-          customer: upsertCustomer(response.data.customer || response.data)
-        };
-      }
-      if (response.error && response.error !== "API unavailable") {
-        return response;
-      }
-    }
-
-    const local = updateCustomerRecord(session.customerId, (customer) => {
-      const next = new Set(customer.wishlist);
-      if (saved) {
-        next.delete(productId);
-      } else {
-        next.add(productId);
-      }
-      customer.wishlist = Array.from(next);
-    });
-    if (!local.ok) {
-      return local;
-    }
-    return { ok: true, saved: !saved, customer: local.customer };
-  }
 
   function setCartQuantity(variantId, quantity) {
     const items = getCart();
@@ -1482,11 +1429,8 @@
     restockStaffInventoryWithApi,
     updateVoucher,
     getAdminReport,
-    isInWishlist,
-    getWishlistProducts,
     addToCart,
     addToCartWithApi,
-    toggleWishlist,
     getCart,
     setCartQuantity,
     removeFromCart,

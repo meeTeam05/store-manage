@@ -61,18 +61,6 @@
     async getCustomerProfile(customerId) {
       return request(`/api/customers/${customerId}`);
     },
-    async addToWishlist(customerId, productId) {
-      return request(`/api/customers/${customerId}/wishlist`, {
-        method: "POST",
-        body: JSON.stringify({ product_id: productId })
-      });
-    },
-    async removeFromWishlist(customerId, productId) {
-      return request(`/api/customers/${customerId}/wishlist/remove`, {
-        method: "POST",
-        body: JSON.stringify({ product_id: productId })
-      });
-    },
 
     // Cart
     async addToCart(cartId, customerId, variantId, quantity) {

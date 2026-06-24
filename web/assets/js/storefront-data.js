@@ -42,8 +42,7 @@ window.storefrontData = {
         "district": "District 1",
         "city": "Ho Chi Minh City",
         "country": "Vietnam"
-      },
-      "wishlist": []
+      }
     }
   ],
   "employees": [

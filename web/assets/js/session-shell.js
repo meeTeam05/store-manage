@@ -17,6 +17,15 @@
     }
   });
 
+  const cartLink = nav.querySelector('a[href="cart.html"]');
+  if (cartLink) {
+    if (session) {
+      cartLink.style.display = "";
+    } else {
+      cartLink.style.display = "none";
+    }
+  }
+
   const previous = document.getElementById("nav-session-shell");
   if (previous) {
     previous.remove();
@@ -29,7 +38,6 @@
   const role = String(session.role);
   const currentPage = window.location.pathname.split("/").pop() || "index.html";
   const isCustomer = role === "Customer" || role === "0";
-  const showWishlistLink = isCustomer && currentPage !== "wishlist.html";
   const showOrdersLink = isCustomer && currentPage !== "orders.html";
   const workspaceLink = (role === "Admin" || role === "3")
     ? "admin.html"
@@ -39,7 +47,6 @@
   shell.id = "nav-session-shell";
   shell.className = "nav-session";
   shell.innerHTML = `
-    ${showWishlistLink ? '<a class="nav-aux" href="wishlist.html">Wishlist</a>' : ""}
     ${showOrdersLink ? '<a class="nav-aux" href="orders.html">My Orders</a>' : ""}
     ${workspaceLink && workspaceLink !== currentPage ? `<a class="nav-aux" href="${workspaceLink}">Workspace</a>` : ""}
     <span class="nav-user">${session.displayName || session.customerName || session.username} / ${role}</span>
