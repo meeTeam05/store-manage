@@ -66,18 +66,19 @@ int main() {
     using namespace fashion_store::infrastructure::persistence::file;
 
     const auto data_dir = resolve_project_path("data");
-    std::filesystem::create_directories(data_dir);
-    const auto product_storefront_path = data_dir / "product_storefront.json";
+    const auto runtime_dir = data_dir / "runtime";
+    std::filesystem::create_directories(runtime_dir);
+    const auto product_storefront_path = runtime_dir / "product_storefront.json";
 
-    FileProductRepository product_repository(data_dir / "products.txt");
-    FileCustomerRepository customer_repository(data_dir / "customers.txt");
-    FileAccountRepository account_repository(data_dir / "accounts.txt");
-    FileInventoryRepository inventory_repository(data_dir / "inventory.txt");
-    FileCartRepository cart_repository(data_dir / "carts.txt");
-    FileOrderRepository order_repository(data_dir / "orders.txt");
-    FileVoucherRepository voucher_repository(data_dir / "vouchers.txt");
-    FileReviewRepository review_repository(data_dir / "reviews.txt");
-    FileReturnRepository return_repository(data_dir / "returns.txt");
+    FileProductRepository product_repository(runtime_dir / "products.txt");
+    FileCustomerRepository customer_repository(runtime_dir / "customers.txt");
+    FileAccountRepository account_repository(runtime_dir / "accounts.txt");
+    FileInventoryRepository inventory_repository(runtime_dir / "inventory.txt");
+    FileCartRepository cart_repository(runtime_dir / "carts.txt");
+    FileOrderRepository order_repository(runtime_dir / "orders.txt");
+    FileVoucherRepository voucher_repository(runtime_dir / "vouchers.txt");
+    FileReviewRepository review_repository(runtime_dir / "reviews.txt");
+    FileReturnRepository return_repository(runtime_dir / "returns.txt");
 
     CartApplicationService cart_svc(cart_repository, product_repository);
     CustomerApplicationService customer_svc(customer_repository);

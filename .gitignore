@@ -11,5 +11,6 @@ build-gpp/
 *.log
 *.bak
 data/*.txt
+data/runtime/
 !data/.gitkeep
 !data/README.md
