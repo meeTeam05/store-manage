@@ -2107,7 +2107,11 @@
 
   function persistOrderRecord(order) {
     const orders = getOrders();
-    return persistOrders([normalizeStoredOrder(order), ...orders.filter((entry) => entry.orderId !== order.orderId)]);
+    const existingOrder = orders.find((entry) => entry.orderId === order.orderId) || null;
+    return persistOrders([
+      normalizeStoredOrder(order, existingOrder || {}),
+      ...orders.filter((entry) => entry.orderId !== order.orderId)
+    ]);
   }
 
   function hydrateCartItems() {
@@ -2239,6 +2243,7 @@
       subtotalMinor: normalizeMoney(order?.subtotalMinor, normalizeMoney(fallback.subtotalMinor, 0)),
       discountMinor: normalizeMoney(order?.discountMinor, normalizeMoney(fallback.discountMinor, 0)),
       totalMinor: normalizeMoney(order?.totalMinor, normalizeMoney(fallback.totalMinor, 0)),
+      refundedMinor: normalizeMoney(order?.refundedMinor, normalizeMoney(fallback.refundedMinor, 0)),
       items,
       inventoryReserved: Boolean(order?.inventoryReserved ?? fallback.inventoryReserved ?? true),
       inventoryRestored: Boolean(order?.inventoryRestored ?? fallback.inventoryRestored ?? false),
@@ -2300,6 +2305,10 @@
       subtotalMinor: normalizeMoney(responseData?.subtotal_minor ?? payload.subtotal_minor ?? payload.subtotalMinor, summary.subtotalMinor || 0),
       discountMinor: normalizeMoney(responseData?.discount_minor ?? payload.discount_minor ?? payload.discountMinor, summary.discountMinor || 0),
       totalMinor: normalizeMoney(responseData?.total_minor ?? payload.total_minor ?? payload.totalMinor, summary.totalMinor || 0),
+      refundedMinor: normalizeMoney(
+        responseData?.refunded_minor ?? responseData?.refundedMinor ?? payload.refunded_minor ?? payload.refundedMinor,
+        normalizeMoney(summary.refundedMinor, 0)
+      ),
       items: items.length > 0 ? items : (summary.items || []),
       inventoryReserved: true,
       inventoryRestored: false,
@@ -2438,9 +2447,13 @@
 
   function mergeBackendOrders(backendOrders) {
     const existingOrders = getOrders();
-    const backendIds = new Set(backendOrders.map((order) => order.orderId));
+    const existingOrdersById = new Map(existingOrders.map((order) => [order.orderId, order]));
+    const mergedBackendOrders = backendOrders
+      .map((order) => normalizeStoredOrder(order, existingOrdersById.get(order.orderId) || {}))
+      .filter((order) => order.orderId);
+    const backendIds = new Set(mergedBackendOrders.map((order) => order.orderId));
     return persistOrders([
-      ...backendOrders,
+      ...mergedBackendOrders,
       ...existingOrders.filter((order) => !backendIds.has(order.orderId) && order.source !== "backend")
     ]);
   }
@@ -2590,6 +2603,7 @@
       subtotalMinor: summary.subtotalMinor,
       discountMinor: summary.discountMinor,
       totalMinor: summary.totalMinor,
+      refundedMinor: 0,
       items: summary.items,
       inventoryReserved: true,
       inventoryRestored: false,
