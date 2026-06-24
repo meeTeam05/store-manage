@@ -686,6 +686,36 @@ static void json_err(httplib::Response& res, int status, const std::string& msg)
     res.set_content(err_json(msg), "application/json");
 }
 
+static std::vector<std::string> product_images_for(
+    const std::filesystem::path& storefront_path,
+    const ProductId& product_id) {
+    const auto metadata = load_product_storefront_metadata(storefront_path);
+    const auto match = metadata.images_by_product.find(product_id.value);
+    return match != metadata.images_by_product.end()
+        ? match->second
+        : std::vector<std::string>{};
+}
+
+static void save_product_images(
+    const std::filesystem::path& storefront_path,
+    const ProductId& product_id,
+    const std::string& image_urls_text) {
+    auto metadata = load_product_storefront_metadata(storefront_path);
+    const auto images = parse_image_urls_text(image_urls_text);
+    if (images.empty()) {
+        metadata.images_by_product.erase(product_id.value);
+    } else {
+        metadata.images_by_product[product_id.value] = images;
+    }
+    save_product_storefront_metadata(storefront_path, metadata);
+}
+
+static std::string ser_product_with_storefront(
+    const Product& product,
+    const std::filesystem::path& storefront_path) {
+    return ser_product(product, product_images_for(storefront_path, product.id()));
+}
+
 using namespace fashion_store::application;
 
 inline void setup_server(
@@ -705,29 +735,6 @@ inline void setup_server(
     report::ReportApplicationService&              report_svc,
     const std::filesystem::path&                   product_storefront_path)
 {
-    auto product_images_for = [&](const ProductId& product_id) {
-        const auto metadata = load_product_storefront_metadata(product_storefront_path);
-        const auto match = metadata.images_by_product.find(product_id.value);
-        return match != metadata.images_by_product.end()
-            ? match->second
-            : std::vector<std::string>{};
-    };
-
-    auto save_product_images = [&](const ProductId& product_id, const std::string& image_urls_text) {
-        auto metadata = load_product_storefront_metadata(product_storefront_path);
-        const auto images = parse_image_urls_text(image_urls_text);
-        if (images.empty()) {
-            metadata.images_by_product.erase(product_id.value);
-        } else {
-            metadata.images_by_product[product_id.value] = images;
-        }
-        save_product_storefront_metadata(product_storefront_path, metadata);
-    };
-
-    auto ser_product_with_storefront = [&](const Product& product) {
-        return ser_product(product, product_images_for(product.id()));
-    };
-
     // CORS preflight
     svr.Options(".*", [](const httplib::Request&, httplib::Response& res) {
         add_cors(res);
@@ -841,14 +848,14 @@ inline void setup_server(
         }
         auto products = catalog_svc.search_products(q);
         std::vector<std::string> arr;
-        for (const auto& p : products) arr.push_back(ser_product_with_storefront(p));
+        for (const auto& p : products) arr.push_back(ser_product_with_storefront(p, product_storefront_path));
         json_ok(res, j_arr(arr));
     });
 
     svr.Get("/api/products/:id", [&](const httplib::Request& req, httplib::Response& res) {
         auto p = catalog_svc.find_product(ProductId{req.path_params.at("id")});
         if (!p) { json_err(res, 404, "Product not found"); return; }
-        json_ok(res, ser_product_with_storefront(*p));
+        json_ok(res, ser_product_with_storefront(*p, product_storefront_path));
     });
 
     svr.Get("/api/variants/:id", [&](const httplib::Request& req, httplib::Response& res) {
@@ -1096,8 +1103,8 @@ inline void setup_server(
         };
         auto result = store_mgmt_svc.create_product(draft);
         if (!result) { json_err(res, 400, "Create product failed"); return; }
-        save_product_images(draft.id, b.str("image_urls_text"));
-        json_ok(res, ser_product_with_storefront(result.value()));
+        save_product_images(product_storefront_path, draft.id, b.str("image_urls_text"));
+        json_ok(res, ser_product_with_storefront(result.value(), product_storefront_path));
     });
 
     svr.Post("/api/staff/products/:id/images", [&](const httplib::Request& req, httplib::Response& res) {
@@ -1105,10 +1112,10 @@ inline void setup_server(
         auto product = catalog_svc.find_product(product_id);
         if (!product) { json_err(res, 404, "Product not found"); return; }
         auto b = parse_body(req.body);
-        save_product_images(product_id, b.str("image_urls_text"));
+        save_product_images(product_storefront_path, product_id, b.str("image_urls_text"));
         product = catalog_svc.find_product(product_id);
         if (!product) { json_err(res, 404, "Product not found"); return; }
-        json_ok(res, ser_product_with_storefront(*product));
+        json_ok(res, ser_product_with_storefront(*product, product_storefront_path));
     });
 
     svr.Post("/api/staff/products/:id/status", [&](const httplib::Request& req, httplib::Response& res) {
@@ -1117,7 +1124,7 @@ inline void setup_server(
             ProductId{req.path_params.at("id")},
             pstatus_from(b.str("status")));
         if (!result) { json_err(res, 400, "Update status failed"); return; }
-        json_ok(res, ser_product_with_storefront(result.value()));
+        json_ok(res, ser_product_with_storefront(result.value(), product_storefront_path));
     });
 
     svr.Post("/api/staff/products/:id/variants", [&](const httplib::Request& req, httplib::Response& res) {
@@ -1132,7 +1139,7 @@ inline void setup_server(
         auto result = store_mgmt_svc.add_product_variant(
             ProductId{req.path_params.at("id")}, vd);
         if (!result) { json_err(res, 400, "Add variant failed"); return; }
-        json_ok(res, ser_product_with_storefront(result.value()));
+        json_ok(res, ser_product_with_storefront(result.value(), product_storefront_path));
     });
 
     svr.Post("/api/staff/inventory", [&](const httplib::Request& req, httplib::Response& res) {

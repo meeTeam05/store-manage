@@ -3,6 +3,7 @@
 .mnhat/
 build/
 build-gpp/
+build_asan/
 *.obj
 *.o
 *.exe
