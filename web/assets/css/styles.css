@@ -3,19 +3,27 @@
 }
 
 :root {
-  color-scheme: dark;
-  --bg: #050505;
-  --bg-subtle: #0b0b0b;
-  --bg-muted: #121212;
-  --surface: rgba(14, 14, 14, 0.94);
-  --surface-solid: #111111;
-  --surface-soft: rgba(20, 20, 20, 0.94);
-  --text: #ffffff;
-  --text-muted: #c8c8c8;
-  --text-soft: #929292;
-  --border: #2b2b2b;
-  --border-strong: #ffffff;
-  --overlay: rgba(0, 0, 0, 0.58);
+  color-scheme: light;
+  --bg: #f6f1ea;
+  --bg-subtle: #efe6dc;
+  --bg-muted: #fffdfa;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #fffdfa;
+  --surface-soft: rgba(255, 253, 250, 0.94);
+  --text: #181614;
+  --text-muted: #5c544e;
+  --text-soft: #8b8178;
+  --border: #cbbfb2;
+  --border-strong: #181614;
+  --overlay: rgba(0, 0, 0, 0.4);
+
+  /* Button theme variables */
+  --btn-border: #cbbfb2;
+  --btn-bg: #fffdfa;
+  --btn-text: #181614;
+  --btn-primary-border: #181614;
+  --btn-primary-bg: #181614;
+  --btn-primary-text: #ffffff;
 }
 
 html, body {
@@ -163,16 +171,48 @@ h3 {
   justify-content: center;
   min-height: 46px;
   padding: 0 18px;
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--btn-border);
   border-radius: 6px;
-  background: transparent;
+  background: var(--btn-bg);
+  color: var(--btn-text);
   font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.button:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.button:active {
+  transform: translateY(0);
 }
 
 .button.primary {
+  border-color: var(--btn-primary-border);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+.hero-actions .button {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  color: #ffffff;
+}
+
+.hero-actions .button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hero-actions .button.primary {
   border-color: #ffffff;
   background: #ffffff;
-  color: #050505;
+  color: #181614;
+}
+
+.hero-actions .button.primary:hover {
+  background: #f6f1ea;
 }
 
 .grid-section,
@@ -483,11 +523,18 @@ h3 {
   background: var(--surface-solid);
   font: inherit;
   color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
 }
 
 .chip.is-active {
   background: var(--border-strong);
-  color: #050505;
+  color: var(--bg);
   border-color: var(--border-strong);
 }
 
