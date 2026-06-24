@@ -19,9 +19,15 @@
   }
 
   function productSummary(product) {
-    const variantCount = (product.variants || []).filter((variant) => variant.active !== false).length;
+    const activeVariants = (product.variants || []).filter((variant) => variant.active !== false);
+    const variantCount = activeVariants.length;
     const variantLabel = variantCount === 1 ? "1 variant" : `${variantCount} variants`;
-    return `${product.category || "Fashion"} / ${productPrice(product)} / ${variantLabel}`;
+    const availableStock = activeVariants.reduce(
+      (total, variant) => total + Math.max(0, Number(variant.stockQuantity) || 0),
+      0
+    );
+    const stockLabel = availableStock > 0 ? `${availableStock} in stock` : "Out of stock";
+    return `${product.category || "Fashion"} / ${productPrice(product)} / ${variantLabel} / ${stockLabel}`;
   }
 
   const catalog = await window.storefrontState.loadProductsWithApi();

@@ -316,6 +316,7 @@ int main() {
         account_repository,
         customer_repository,
         employee_repository,
+        inventory_repository,
         order_svc,
         review_svc,
         returns_svc,

@@ -34,6 +34,7 @@
 #include "domain/catalog/product.hpp"
 #include "domain/customer/customer.hpp"
 #include "domain/identity/access_control.hpp"
+#include "domain/inventory/inventory_repository.hpp"
 #include "domain/notification/notification.hpp"
 #include "domain/order/order.hpp"
 #include "domain/pricing/voucher.hpp"
@@ -510,16 +511,24 @@ static std::string shipstatus_str(ShippingStatus s) {
 
 static std::string ser_product(
     const Product& p,
-    const std::vector<std::string>& images = {}) {
+    const std::vector<std::string>& images,
+    const domain::inventory::IInventoryRepository& inventory_repository) {
     std::vector<std::string> vars;
     for (const auto& v : p.variants()) {
+        const auto inventory = inventory_repository.find_by_variant_id(v.id);
+        const auto on_hand = inventory.has_value() ? inventory->on_hand() : 0;
+        const auto reserved = inventory.has_value() ? inventory->reserved() : 0;
+        const auto available = inventory.has_value() ? inventory->available() : 0;
         vars.push_back(j_obj({
             {"variant_id",   j_str(v.id.value)},
             {"sku",          j_str(v.sku)},
             {"size",         j_str(v.size.value)},
             {"color",        j_str(v.color.value)},
             {"price_minor",  j_num(v.price.minor_units())},
-            {"active",       j_bool(v.active)}
+            {"active",       j_bool(v.active)},
+            {"stock_quantity", j_num(available)},
+            {"on_hand",      j_num(on_hand)},
+            {"reserved",     j_num(reserved)}
         }));
     }
     std::vector<std::string> image_items;
@@ -795,6 +804,7 @@ inline void setup_server(
     domain::identity::IAccountRepository&          account_repo,
     domain::customer::ICustomerRepository&         customer_repo,
     domain::staff::IEmployeeRepository&            employee_repo,
+    domain::inventory::IInventoryRepository&       inventory_repo,
     order::OrderApplicationService&                order_svc,
     review::ReviewApplicationService&              review_svc,
     returns::ReturnsApplicationService&            returns_svc,
@@ -829,8 +839,8 @@ inline void setup_server(
         save_product_storefront_metadata(storefront_path, metadata);
     };
 
-    auto ser_product_with_storefront = [product_images_for](const Product& product) {
-        return ser_product(product, product_images_for(product.id()));
+    auto ser_product_with_storefront = [product_images_for, &inventory_repo](const Product& product) {
+        return ser_product(product, product_images_for(product.id()), inventory_repo);
     };
 
     std::unordered_map<std::string, SessionContext> sessions;
