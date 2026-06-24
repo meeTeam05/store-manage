@@ -190,10 +190,7 @@
       imageFilesInput.value = "";
     }
 
-    const savedToBackend = productResult.source === "api" || inventorySavedToBackend || imageResult.source === "api";
-    setFeedback(true, savedToBackend
-      ? `${productResult.product.name} synced to backend with details, stock, and images.`
-      : `${productResult.product.name} updated for this local session.`);
+    setFeedback(true, `${productResult.product.name} updated successfully.`);
     await render();
   }
 
@@ -241,7 +238,7 @@
             <textarea name="imageUrlsText" rows="4">${escapeHtml((product.images || []).join("\n"))}</textarea>
           </label>
           <label class="admin-field admin-field-full">
-            <span>Or upload local images</span>
+            <span>Upload images from device</span>
             <input name="imageFiles" type="file" accept="image/*" multiple>
           </label>
         </div>
@@ -336,7 +333,7 @@
         setFeedback(false, result.error);
         return;
       }
-      setFeedback(true, `Voucher ${result.voucher.code} updated for this local session.`);
+      setFeedback(true, `Voucher ${result.voucher.code} updated successfully.`);
       render();
     });
   }
@@ -384,7 +381,7 @@
           ? await window.storefrontState.setManagedAccountStatusWithApi(accountId, nextStatus)
           : window.storefrontState.setManagedAccountStatus(accountId, nextStatus);
         setFeedback(result.ok, result.ok
-          ? `${account.username} is now ${nextStatus}.${result.source === "api" ? " Synced with backend." : ""}`
+          ? `${account.username} is now ${nextStatus}.`
           : result.error);
         await render();
       });
@@ -399,7 +396,7 @@
           ? await window.storefrontState.resetManagedAccountPasswordWithApi(accountId, password)
           : window.storefrontState.resetManagedAccountPassword(accountId, password);
         setFeedback(result.ok, result.ok
-          ? `Password reset completed.${result.source === "api" ? " Synced with backend." : ""}`
+          ? "Password reset completed."
           : result.error);
         if (result.ok) {
           const input = card?.querySelector('[name="password"]');
@@ -432,7 +429,7 @@
             <p class="payment-meta">${escapeHtml(order.customerName)} / ${escapeHtml(order.orderStatus)} / ${window.storefrontState.formatMoney(order.totalMinor)}</p>
           </article>
         `).join("")
-      : '<p class="payment-meta">No local orders yet.</p>';
+      : '<p class="payment-meta">No orders yet.</p>';
 
     reportBodyElement.innerHTML = `
       <div class="admin-report-grid">
@@ -485,9 +482,7 @@
       });
       submitButton.disabled = false;
       setFeedback(result.ok, result.ok
-        ? (result.source === "api"
-          ? `${result.product.name} created and image metadata saved to \`data/product_storefront.json\`.`
-          : `${result.product.name} created for this local session.`)
+        ? `${result.product.name} created successfully.`
         : result.error);
       if (result.ok) {
         createProductForm.reset();
@@ -539,7 +534,7 @@
             password: String(formData.get("password") || "").trim()
           });
       setFeedback(result.ok, result.ok
-        ? `${result.account.username} created.${result.source === "api" ? " Saved to backend." : " Stored for local demo."}`
+        ? `${result.account.username} created successfully.`
         : result.error);
       if (result.ok) {
         accountForm.reset();

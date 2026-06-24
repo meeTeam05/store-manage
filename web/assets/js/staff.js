@@ -151,7 +151,7 @@
     if (visibleOrders.length === 0) {
       orderEmptyElement.hidden = false;
       orderEmptyElement.textContent = ordersCache.length === 0
-        ? "No orders yet. Place a customer test order first."
+        ? "No orders yet."
         : `No orders in ${activeOrderFilter}.`;
       orderListElement.innerHTML = "";
       return;
@@ -187,10 +187,6 @@
             <article>
               <span>Total</span>
               <p>${window.storefrontState.formatMoney(order.totalMinor)}</p>
-            </article>
-            <article>
-              <span>Backend</span>
-              <p>${escapeHtml(order.backendState || "Local demo")}</p>
             </article>
           </div>
 
@@ -287,10 +283,6 @@
               <span>Order</span>
               <p>${escapeHtml(order?.orderStatus || "Unknown")}</p>
             </article>
-            <article>
-              <span>Source</span>
-              <p>${escapeHtml(returnSource === "api" ? "Backend sync" : "Local session")}</p>
-            </article>
           </div>
 
           <div class="staff-order-actions">
@@ -384,15 +376,11 @@
 
     if (orderFeedbackElement && !orderFeedbackElement.textContent) {
       orderFeedbackElement.dataset.state = "success";
-      orderFeedbackElement.textContent = orderSource === "api"
-        ? "Loaded live backend orders."
-        : "Showing local fallback orders.";
+      orderFeedbackElement.textContent = "Orders updated.";
     }
     if (returnFeedbackElement && !returnFeedbackElement.textContent) {
       returnFeedbackElement.dataset.state = "success";
-      returnFeedbackElement.textContent = returnSource === "api"
-        ? "Loaded live backend returns."
-        : "Showing local session return requests.";
+      returnFeedbackElement.textContent = "Returns updated.";
     }
   }
 

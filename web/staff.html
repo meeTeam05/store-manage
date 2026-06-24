@@ -28,24 +28,24 @@
       <article>
         <span>01</span>
         <h2>Orders</h2>
-        <p>Xác nhận thanh toán, đóng gói, giao hàng, hoàn tất hoặc hủy đơn đúng luồng xử lý.</p>
+        <p>Confirm payment, pack orders, ship items, complete fulfillment, or cancel when needed.</p>
       </article>
       <article>
         <span>02</span>
         <h2>Shipping</h2>
-        <p>Cập nhật trạng thái chuẩn bị, đang giao, đã giao để khách theo dõi được tiến độ.</p>
+        <p>Update each shipment from preparing to in transit and delivered so progress stays clear.</p>
       </article>
       <article>
         <span>03</span>
         <h2>Returns</h2>
-        <p>Duyệt yêu cầu đổi trả, restock hàng hoàn, refund và đóng hồ sơ hoàn trả.</p>
+        <p>Review return requests, restock returned items, issue refunds, and close each case cleanly.</p>
       </article>
     </section>
 
     <section class="staff-workbench">
       <article class="payment-card">
         <p class="summary-card-title">Order Control</p>
-        <p class="payment-meta">Ưu tiên dùng backend nếu server đang chạy; nếu không sẽ dùng local demo state trong session hiện tại.</p>
+        <p class="payment-meta">Review customer orders, shipping progress, and return requests from one workspace.</p>
         <div id="staff-order-metrics" class="info-grid order-history-grid"></div>
       </article>
 
@@ -53,12 +53,12 @@
         <div class="staff-toolbar">
           <div>
             <p class="summary-card-title">Order Queue</p>
-            <p class="payment-meta">Chỉ staff xử lý các bước payment confirmation, packing, shipping, delivered, completed.</p>
+            <p class="payment-meta">Handle payment confirmation, packing, shipping, delivery, and completion.</p>
           </div>
           <div id="staff-order-filters" class="chip-row staff-filter-row"></div>
         </div>
         <p id="staff-order-feedback" class="status" aria-live="polite"></p>
-        <p id="staff-order-empty" class="payment-meta" hidden>No orders yet. Place a customer test order first.</p>
+        <p id="staff-order-empty" class="payment-meta" hidden>No orders yet.</p>
         <div id="staff-order-list" class="staff-order-list"></div>
       </section>
 
@@ -66,7 +66,7 @@
         <div class="staff-toolbar">
           <div>
             <p class="summary-card-title">Return Queue</p>
-            <p class="payment-meta">Xử lý tuần tự Requested → Approved/Rejected → Restocked → Refunded → Closed.</p>
+            <p class="payment-meta">Process each case from request through approval, restock, refund, and closure.</p>
           </div>
           <div id="staff-return-filters" class="chip-row staff-filter-row"></div>
         </div>
