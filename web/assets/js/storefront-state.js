@@ -2,9 +2,9 @@
   function createStorage() {
     try {
       const probeKey = "__store_manage_probe__";
-      window.sessionStorage.setItem(probeKey, "1");
-      window.sessionStorage.removeItem(probeKey);
-      return window.sessionStorage;
+      window.localStorage.setItem(probeKey, "1");
+      window.localStorage.removeItem(probeKey);
+      return window.localStorage;
     } catch {
       const memory = new Map();
       return {
@@ -35,6 +35,25 @@
     returns: "fashion_store_returns",
     notifications: "fashion_store_notifications"
   };
+
+  function migrateLegacySessionStorage(targetStorage, keys) {
+    try {
+      if (targetStorage !== window.localStorage || !window.sessionStorage) {
+        return;
+      }
+      Object.values(keys).forEach((key) => {
+        if (targetStorage.getItem(key) !== null) {
+          return;
+        }
+        const legacyValue = window.sessionStorage.getItem(key);
+        if (legacyValue !== null) {
+          targetStorage.setItem(key, legacyValue);
+        }
+      });
+    } catch {}
+  }
+
+  migrateLegacySessionStorage(storage, storageKeys);
   const productImageFallbacks = {
     Outerwear: [
       "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
