@@ -33,28 +33,28 @@
   };
   const productImageFallbacks = {
     Outerwear: [
-      "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
+      "outerwear_1.jpg",
+      "outerwear_2.jpg"
     ],
     Dresses: [
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80"
+      "dresses_1.jpg",
+      "dresses_2.jpg"
     ],
     Bottoms: [
-      "https://images.unsplash.com/photo-1475180098004-ca77a66827be?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1506629905607-d9c297d2b2a7?auto=format&fit=crop&w=1200&q=80"
+      "bottoms_1.jpg",
+      "bottoms_2.jpg"
     ],
     Tops: [
-      "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&q=80"
+      "tops_1.jpg",
+      "tops_2.jpg"
     ],
     Shoes: [
-      "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1200&q=80"
+      "shoes_1.jpg",
+      "shoes_2.jpg"
     ],
     Accessories: [
-      "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=1200&q=80"
+      "accessories_1.jpg",
+      "accessories_2.jpg"
     ]
   };
 

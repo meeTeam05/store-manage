@@ -65,8 +65,8 @@ window.storefrontData = {
       description: "Long-line black coat with quiet shoulder structure, fluid drape, and a disciplined silhouette for day-to-evening wear.",
       priceMinor: 4900000,
       images: [
-        "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
+        "outerwear_1.jpg",
+        "outerwear_2.jpg"
       ],
       variants: [
         { variantId: "variant-001-black-s", size: "S", color: "Black", sku: "COAT-BLK-S", stockQuantity: 10 },
@@ -83,7 +83,8 @@ window.storefrontData = {
       description: "Fluid ivory column dress with a draped cowl neck, open back, and floor-skimming hem for elevated evening wear.",
       priceMinor: 5600000,
       images: [
-        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80"
+        "dresses_1.jpg",
+        "dresses_2.jpg"
       ],
       variants: [
         { variantId: "variant-002-ivory-s", size: "S", color: "Ivory", sku: "DRESS-IVR-S", stockQuantity: 5 },
@@ -100,7 +101,8 @@ window.storefrontData = {
       description: "Classic double-breasted tailored blazer in charcoal wool, features structured shoulders and a modern relaxed cut.",
       priceMinor: 3800000,
       images: [
-        "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
+        "tops_1.jpg",
+        "tops_2.jpg"
       ],
       variants: [
         { variantId: "variant-003-charcoal-s", size: "S", color: "Charcoal", sku: "BLZR-CHA-S", stockQuantity: 7 },
