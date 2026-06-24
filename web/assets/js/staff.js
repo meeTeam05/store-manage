@@ -58,6 +58,14 @@
     }
   }
 
+  function returnActionNeedsNote(actionId) {
+    return ["approve", "reject", "restock", "close"].includes(actionId);
+  }
+
+  function returnActionNeedsRefundReference(actionId) {
+    return actionId === "refund";
+  }
+
   const session = window.storefrontState.getSession();
   const sessionElement = document.getElementById("staff-session");
   const metricsElement = document.getElementById("staff-order-metrics");
@@ -250,6 +258,8 @@
     returnListElement.innerHTML = visibleReturns.map((request) => {
       const order = orderById.get(request.orderId) || null;
       const actions = returnActionsFor(request);
+      const needsNote = actions.some((action) => returnActionNeedsNote(action.id));
+      const needsRefundReference = actions.some((action) => returnActionNeedsRefundReference(action.id));
       return `
         <article class="payment-card order-history-card staff-order-card">
           <div class="staff-order-head">
@@ -284,6 +294,18 @@
           </div>
 
           <div class="staff-order-actions">
+            ${needsNote ? `
+              <label class="admin-field admin-field-full">
+                <span>Staff Note</span>
+                <textarea rows="2" placeholder="Reason, update, or closure note" data-return-note></textarea>
+              </label>
+            ` : ""}
+            ${needsRefundReference ? `
+              <label class="admin-field">
+                <span>Refund Reference</span>
+                <input type="text" placeholder="BANK-REF-001" data-refund-reference>
+              </label>
+            ` : ""}
             ${actions.map((action) => `
               <button
                 class="button compact ${action.primary ? "primary" : ""}"
