@@ -141,6 +141,46 @@ int main() {
         product_repository.save(product);
     }
 
+    if (!product_repository.find_by_id(ProductId{"product-002"}).has_value()) {
+        Product product(
+            ProductId{"product-002"},
+            "Ivory Column Dress",
+            Category::Dresses,
+            "Fluid ivory column dress with a draped cowl neck, open back, and floor-skimming hem for elevated evening wear.",
+            "Maison Aureline 2026");
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-002-ivory-s"}, "DRESS-IVR-S", Size{"S"}, Color{"Ivory"}, Money::from_minor(5600000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-002-ivory-m"}, "DRESS-IVR-M", Size{"M"}, Color{"Ivory"}, Money::from_minor(5600000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-002-ivory-l"}, "DRESS-IVR-L", Size{"L"}, Color{"Ivory"}, Money::from_minor(5600000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-002-beige-s"}, "DRESS-BEG-S", Size{"S"}, Color{"Beige"}, Money::from_minor(5600000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-002-beige-m"}, "DRESS-BEG-M", Size{"M"}, Color{"Beige"}, Money::from_minor(5600000)});
+        product_repository.save(product);
+    }
+
+    if (!product_repository.find_by_id(ProductId{"product-003"}).has_value()) {
+        Product product(
+            ProductId{"product-003"},
+            "Tailored Blazer",
+            Category::Outerwear,
+            "Classic double-breasted tailored blazer in charcoal wool, features structured shoulders and a modern relaxed cut.",
+            "Maison Aureline 2026");
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-003-charcoal-s"}, "BLZR-CHA-S", Size{"S"}, Color{"Charcoal"}, Money::from_minor(3800000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-003-charcoal-m"}, "BLZR-CHA-M", Size{"M"}, Color{"Charcoal"}, Money::from_minor(3800000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-003-charcoal-l"}, "BLZR-CHA-L", Size{"L"}, Color{"Charcoal"}, Money::from_minor(3800000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-003-black-s"}, "BLZR-BLK-S", Size{"S"}, Color{"Black"}, Money::from_minor(3800000)});
+        (void)product.add_variant(ProductVariantDraft{
+            VariantId{"variant-003-black-m"}, "BLZR-BLK-M", Size{"M"}, Color{"Black"}, Money::from_minor(3800000)});
+        product_repository.save(product);
+    }
+
     if (!inventory_repository.find_by_variant_id(VariantId{"variant-001-black-s"}).has_value()) {
         inventory_repository.save(InventoryItem(VariantId{"variant-001-black-s"}, 10));
     }
@@ -155,6 +195,38 @@ int main() {
     }
     if (!inventory_repository.find_by_variant_id(VariantId{"variant-001-ivory-m"}).has_value()) {
         inventory_repository.save(InventoryItem(VariantId{"variant-001-ivory-m"}, 9));
+    }
+
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-002-ivory-s"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-002-ivory-s"}, 5));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-002-ivory-m"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-002-ivory-m"}, 4));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-002-ivory-l"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-002-ivory-l"}, 3));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-002-beige-s"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-002-beige-s"}, 6));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-002-beige-m"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-002-beige-m"}, 5));
+    }
+
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-003-charcoal-s"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-003-charcoal-s"}, 7));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-003-charcoal-m"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-003-charcoal-m"}, 8));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-003-charcoal-l"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-003-charcoal-l"}, 6));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-003-black-s"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-003-black-s"}, 5));
+    }
+    if (!inventory_repository.find_by_variant_id(VariantId{"variant-003-black-m"}).has_value()) {
+        inventory_repository.save(InventoryItem(VariantId{"variant-003-black-m"}, 6));
     }
 
     if (!customer_repository.find_by_id(CustomerId{"customer-001"}).has_value()) {

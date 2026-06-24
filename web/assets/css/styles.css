@@ -254,6 +254,126 @@ h3 {
   outline-offset: 6px;
 }
 
+/* Product Horizontal Slider styles */
+.slider-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 -20px;
+  padding: 0 20px;
+}
+
+.product-slider {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  gap: 20px;
+  width: 100%;
+  padding: 10px 0 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar for slider */
+.product-slider::-webkit-scrollbar {
+  display: none;
+}
+.product-slider {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.product-slider .product-card {
+  flex: 0 0 calc(33.333% - 14px); /* Show exactly 3 items */
+  scroll-snap-align: start;
+}
+
+@media (max-width: 900px) {
+  .product-slider .product-card {
+    flex: 0 0 calc(50% - 10px); /* Show exactly 2 items on tablets */
+  }
+}
+
+@media (max-width: 600px) {
+  .product-slider .product-card {
+    flex: 0 0 100%; /* Show 1 item on mobile */
+  }
+}
+
+.product-card-img-wrap {
+  aspect-ratio: 0.8;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  transition: transform 0.3s ease;
+}
+
+.product-card:hover .product-card-img-wrap {
+  transform: scale(1.02);
+}
+
+.slider-btn {
+  position: absolute;
+  top: calc(50% - 22px);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.slider-btn:hover {
+  background: var(--border-strong);
+  color: var(--bg);
+  border-color: var(--border-strong);
+}
+
+.slider-btn.prev-btn {
+  left: 0;
+}
+
+.slider-btn.next-btn {
+  right: 0;
+}
+
+/* Dots indicators */
+.slider-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.slider-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.slider-dots .dot:hover {
+  background: var(--text-soft);
+}
+
+.slider-dots .dot.is-active {
+  background: var(--border-strong);
+  transform: scale(1.2);
+}
+
 .product-card h3 {
   margin: 14px 0 6px;
   font-size: 28px;

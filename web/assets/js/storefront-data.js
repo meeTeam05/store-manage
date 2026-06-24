@@ -75,6 +75,40 @@ window.storefrontData = {
         { variantId: "variant-001-ivory-s", size: "S", color: "Ivory", sku: "COAT-IVR-S", stockQuantity: 9 },
         { variantId: "variant-001-ivory-m", size: "M", color: "Ivory", sku: "COAT-IVR-M", stockQuantity: 9 }
       ]
+    },
+    {
+      productId: "product-002",
+      name: "Ivory Column Dress",
+      category: "Dresses",
+      description: "Fluid ivory column dress with a draped cowl neck, open back, and floor-skimming hem for elevated evening wear.",
+      priceMinor: 5600000,
+      images: [
+        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80"
+      ],
+      variants: [
+        { variantId: "variant-002-ivory-s", size: "S", color: "Ivory", sku: "DRESS-IVR-S", stockQuantity: 5 },
+        { variantId: "variant-002-ivory-m", size: "M", color: "Ivory", sku: "DRESS-IVR-M", stockQuantity: 4 },
+        { variantId: "variant-002-ivory-l", size: "L", color: "Ivory", sku: "DRESS-IVR-L", stockQuantity: 3 },
+        { variantId: "variant-002-beige-s", size: "S", color: "Beige", sku: "DRESS-BEG-S", stockQuantity: 6 },
+        { variantId: "variant-002-beige-m", size: "M", color: "Beige", sku: "DRESS-BEG-M", stockQuantity: 5 }
+      ]
+    },
+    {
+      productId: "product-003",
+      name: "Tailored Blazer",
+      category: "Outerwear",
+      description: "Classic double-breasted tailored blazer in charcoal wool, features structured shoulders and a modern relaxed cut.",
+      priceMinor: 3800000,
+      images: [
+        "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
+      ],
+      variants: [
+        { variantId: "variant-003-charcoal-s", size: "S", color: "Charcoal", sku: "BLZR-CHA-S", stockQuantity: 7 },
+        { variantId: "variant-003-charcoal-m", size: "M", color: "Charcoal", sku: "BLZR-CHA-M", stockQuantity: 8 },
+        { variantId: "variant-003-charcoal-l", size: "L", color: "Charcoal", sku: "BLZR-CHA-L", stockQuantity: 6 },
+        { variantId: "variant-003-black-s", size: "S", color: "Black", sku: "BLZR-BLK-S", stockQuantity: 5 },
+        { variantId: "variant-003-black-m", size: "M", color: "Black", sku: "BLZR-BLK-M", stockQuantity: 6 }
+      ]
     }
   ],
   voucher: {

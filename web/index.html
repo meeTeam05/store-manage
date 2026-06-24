@@ -30,73 +30,27 @@
         <h1>Store Manage</h1>
         <p>Local storefront shell for testing product, cart, payment, and role-based flows around the C++ core.</p>
         <div class="hero-actions">
-          <a class="button primary" href="#new-arrivals">Explore Catalog</a>
+          <a class="button primary" href="#catalog-section">Explore Catalog</a>
           <a class="button" href="product.html">View Product</a>
           <a class="button" href="login.html">Sign In</a>
         </div>
       </div>
     </section>
 
-    <section id="new-arrivals" class="grid-section">
+    <section id="catalog-section" class="grid-section">
       <div class="section-heading">
-        <p>New Arrivals</p>
-        <h2>Current Selection</h2>
+        <p>Catalog</p>
+        <h2>Our Collection</h2>
       </div>
-      <div id="product-grid" class="product-grid">
-        <article class="product-card">
-          <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80" alt="Structured black coat">
-          <div>
-            <h3>Structured Coat</h3>
-            <p>Black wool silhouette</p>
-          </div>
-        </article>
-        <article class="product-card">
-          <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80" alt="Ivory dress">
-          <div>
-            <h3>Ivory Column Dress</h3>
-            <p>Fluid evening construction</p>
-          </div>
-        </article>
-        <article class="product-card">
-          <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80" alt="Tailored blazer">
-          <div>
-            <h3>Tailored Blazer</h3>
-            <p>Soft structure, sharp line</p>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section id="collections" class="editorial">
-      <div class="editorial-copy">
-        <p>Local Demo Flow</p>
-        <h2>Product, cart, payment, and role routing in one shell</h2>
-        <p>The current web layer stays local-first so you can test storefront behavior while the C++ business core remains the main focus.</p>
-      </div>
-      <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80" alt="Editorial collection model">
-    </section>
-
-    <section id="essentials" class="grid-section">
-      <div class="section-heading">
-        <p>Core Paths</p>
-        <h2>What This Local Shell Covers</h2>
-      </div>
-      <div class="feature-row">
-        <div>
-          <span>01</span>
-          <h3>Catalog</h3>
-          <p>Browse product variants and test product detail interactions.</p>
+      <div class="slider-wrapper">
+        <button class="slider-btn prev-btn" id="slider-prev" type="button" aria-label="Previous">&larr;</button>
+        <div id="product-grid" class="product-slider">
+          <!-- dynamically loaded product-cards -->
         </div>
-        <div>
-          <span>02</span>
-          <h3>Checkout</h3>
-          <p>Move from cart to a local payment step before placing a test order.</p>
-        </div>
-        <div>
-          <span>03</span>
-          <h3>Role Access</h3>
-          <p>Switch among customer, staff, and admin entry points from one login page.</p>
-        </div>
+        <button class="slider-btn next-btn" id="slider-next" type="button" aria-label="Next">&rarr;</button>
+      </div>
+      <div class="slider-dots" id="slider-dots">
+        <!-- indicators render here -->
       </div>
     </section>
   </main>
