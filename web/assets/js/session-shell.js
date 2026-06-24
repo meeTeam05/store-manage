@@ -8,8 +8,13 @@
   const session = window.storefrontState.getSession();
 
   authLinks.forEach((link) => {
-    link.textContent = session ? "Switch Account" : "Sign In";
-    link.href = "login.html";
+    if (session) {
+      link.style.display = "none";
+    } else {
+      link.style.display = "";
+      link.textContent = "Sign In";
+      link.href = "login.html";
+    }
   });
 
   const previous = document.getElementById("nav-session-shell");
