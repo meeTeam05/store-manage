@@ -1102,6 +1102,9 @@
     const orders = getOrders();
     const voucher = getVoucher();
     const revenueMinor = calculateNetRevenueMinor(orders);
+    const refundedOrders = orders.filter((entry) =>
+      entry.paymentStatus === "Refunded" || normalizeMoney(entry.refundedMinor, 0) > 0
+    ).length;
 
     const quantitiesByProduct = new Map();
     orders
@@ -1127,7 +1130,7 @@
       totalOrders: orders.length,
       openOrders: orders.filter((entry) => !["Completed", "Cancelled"].includes(entry.orderStatus)).length,
       paidOrders: orders.filter((entry) => entry.paymentStatus === "Paid").length,
-      refundedOrders: orders.filter((entry) => entry.paymentStatus === "Refunded").length,
+      refundedOrders,
       revenueMinor,
       activeProducts: products.filter((entry) => entry.status === "Active").length,
       voucher,
@@ -1766,6 +1769,12 @@
           if (request.status !== "Restocked") {
             return { ok: false, error: "Only restocked returns can be refunded." };
           }
+          {
+            const refundResult = applyRefundToOrderRecord(request.orderId, request);
+            if (!refundResult.ok) {
+              return refundResult;
+            }
+          }
           request.status = "Refunded";
           return { ok: true };
         case "close":
@@ -1863,6 +1872,12 @@
     }
 
     const updatedRequest = persistReturnRecord(mergeReturnRecord(response.data, order));
+    if (action === "refund") {
+      const refundResult = applyRefundToOrderRecord(updatedRequest.orderId, updatedRequest);
+      if (!refundResult.ok) {
+        return refundResult;
+      }
+    }
     return { ok: true, request: updatedRequest, returns: getStaffReturns(), source: "api" };
   }
 
@@ -2333,6 +2348,46 @@
     orders[index] = normalizeStoredOrder(current, orders[index]);
     persistOrders(orders);
     return { ok: true, order: orders[index], orders };
+  }
+
+  function calculateReturnRefundMinor(order, request) {
+    if (!order || !request) {
+      return 0;
+    }
+    const item = (order.items || []).find((entry) => entry.orderItemId === request.orderItemId) || null;
+    if (!item) {
+      return 0;
+    }
+    const purchasedQuantity = Math.max(1, normalizeMoney(item.quantity, 1));
+    const refundQuantity = Math.max(1, Math.min(purchasedQuantity, normalizeMoney(request.quantity, 1)));
+    const lineTotalMinor = normalizeMoney(
+      item.lineTotalMinor,
+      normalizeMoney(item.unitPriceMinor, 0) * purchasedQuantity
+    );
+    const unitPriceMinor = normalizeMoney(
+      item.unitPriceMinor,
+      purchasedQuantity > 0 ? lineTotalMinor / purchasedQuantity : lineTotalMinor
+    );
+    return Math.max(0, Math.min(lineTotalMinor, unitPriceMinor * refundQuantity));
+  }
+
+  function applyRefundToOrderRecord(orderId, request) {
+    const existingOrder = getOrders().find((entry) => entry.orderId === orderId) || null;
+    const refundAmountMinor = calculateReturnRefundMinor(existingOrder, request);
+    if (!existingOrder || refundAmountMinor <= 0) {
+      return { ok: true, skipped: true };
+    }
+
+    return updateOrderRecord(orderId, (order) => {
+      const totalMinor = normalizeMoney(order.totalMinor, 0);
+      const currentRefundedMinor = normalizeMoney(order.refundedMinor, 0);
+      const nextRefundedMinor = Math.min(totalMinor, currentRefundedMinor + refundAmountMinor);
+      order.refundedMinor = nextRefundedMinor;
+      if (nextRefundedMinor >= totalMinor && totalMinor > 0) {
+        order.paymentStatus = "Refunded";
+      }
+      return { ok: true };
+    });
   }
 
   function applyInventoryDelta(items, delta) {
