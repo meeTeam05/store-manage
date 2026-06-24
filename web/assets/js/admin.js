@@ -25,6 +25,7 @@
   const accountListElement = document.getElementById("admin-account-list");
   const reportBodyElement = document.getElementById("admin-report-body");
   let productsCache = [];
+  let accountsCache = [];
 
   if (!session || !isAdminRole(session.role)) {
     window.location.href = "login.html";
@@ -70,6 +71,18 @@
     productsCache = window.storefrontState.getProducts();
   }
 
+  async function loadAccounts() {
+    if (window.storefrontState.loadManagedAccountsWithApi) {
+      const result = await window.storefrontState.loadManagedAccountsWithApi();
+      accountsCache = result.accounts;
+      if (!result.ok && result.error !== "API unavailable") {
+        setFeedback(false, result.error);
+      }
+      return;
+    }
+    accountsCache = window.storefrontState.getManagedAccounts();
+  }
+
   function renderOverview(report, accountCount) {
     const metrics = [
       { label: "Active Products", value: report.activeProducts },
@@ -100,8 +113,10 @@
 
   async function saveProductCard(card) {
     const productId = String(card.dataset.productId || "");
+    const currentProduct = window.storefrontState.getProduct(productId);
     const name = card.querySelector('[name="name"]').value.trim();
     const category = card.querySelector('[name="category"]').value.trim();
+    const collection = String(currentProduct?.collection || "").trim();
     const priceMinor = Number(card.querySelector('[name="priceMinor"]').value);
     const status = card.querySelector('[name="status"]').value;
     const description = card.querySelector('[name="description"]').value.trim();
@@ -109,27 +124,54 @@
     const imageFilesInput = card.querySelector('[name="imageFiles"]');
     const uploadedImages = await readFilesAsDataUrls(imageFilesInput);
     const imageUrlsText = mergeImageText(imageUrlsInput?.value, uploadedImages);
+    const stockInputs = Array.from(card.querySelectorAll("[data-variant-stock]"));
+    const stockDrafts = stockInputs.map((input) => ({
+      variantId: String(input.dataset.variantId || ""),
+      onHand: Number(input.value)
+    }));
 
-    const productResult = window.storefrontState.updateProduct(productId, {
-      name,
-      category,
-      priceMinor,
-      status,
-      description
-    });
+    if (stockDrafts.some((draft) => !draft.variantId || !Number.isFinite(draft.onHand) || draft.onHand < 0)) {
+      setFeedback(false, "Stock must be zero or greater for every variant.");
+      return;
+    }
+
+    const productResult = window.storefrontState.updateProductWithApi
+      ? await window.storefrontState.updateProductWithApi(productId, {
+        name,
+        category,
+        collection,
+        priceMinor,
+        status,
+        description
+      })
+      : window.storefrontState.updateProduct(productId, {
+        name,
+        category,
+        collection,
+        priceMinor,
+        status,
+        description
+      });
     if (!productResult.ok) {
       setFeedback(false, productResult.error);
       return;
     }
 
-    const stockInputs = Array.from(card.querySelectorAll("[data-variant-stock]"));
-    for (const input of stockInputs) {
-      const variantId = String(input.dataset.variantId || "");
-      const stockResult = window.storefrontState.updateVariantStock(productId, variantId, Number(input.value));
+    let inventorySavedToBackend = false;
+    for (const draft of stockDrafts) {
+      const stockResult = window.storefrontState.setStaffInventoryWithApi
+        ? await window.storefrontState.setStaffInventoryWithApi({
+          productId,
+          variantId: draft.variantId,
+          onHand: draft.onHand,
+          reserved: 0
+        })
+        : window.storefrontState.updateVariantStock(productId, draft.variantId, draft.onHand);
       if (!stockResult.ok) {
         setFeedback(false, stockResult.error);
         return;
       }
+      inventorySavedToBackend = inventorySavedToBackend || stockResult.source === "api";
     }
 
     const imageResult = await window.storefrontState.saveProductImagesWithApi(productId, {
@@ -148,8 +190,9 @@
       imageFilesInput.value = "";
     }
 
-    setFeedback(true, imageResult.source === "api"
-      ? `${productResult.product.name} updated, and product images saved to \`data/product_storefront.json\`.`
+    const savedToBackend = productResult.source === "api" || inventorySavedToBackend || imageResult.source === "api";
+    setFeedback(true, savedToBackend
+      ? `${productResult.product.name} synced to backend with details, stock, and images.`
       : `${productResult.product.name} updated for this local session.`);
     await render();
   }
@@ -337,9 +380,11 @@
           return;
         }
         const nextStatus = account.status === "Active" ? "Locked" : "Active";
-        const result = window.storefrontState.setManagedAccountStatus(accountId, nextStatus);
+        const result = window.storefrontState.setManagedAccountStatusWithApi
+          ? await window.storefrontState.setManagedAccountStatusWithApi(accountId, nextStatus)
+          : window.storefrontState.setManagedAccountStatus(accountId, nextStatus);
         setFeedback(result.ok, result.ok
-          ? `${account.username} is now ${nextStatus}.`
+          ? `${account.username} is now ${nextStatus}.${result.source === "api" ? " Synced with backend." : ""}`
           : result.error);
         await render();
       });
@@ -350,9 +395,11 @@
         const card = button.closest("[data-account-id]");
         const accountId = String(card?.dataset.accountId || "");
         const password = String(card?.querySelector('[name="password"]')?.value || "").trim();
-        const result = window.storefrontState.resetManagedAccountPassword(accountId, password);
+        const result = window.storefrontState.resetManagedAccountPasswordWithApi
+          ? await window.storefrontState.resetManagedAccountPasswordWithApi(accountId, password)
+          : window.storefrontState.resetManagedAccountPassword(accountId, password);
         setFeedback(result.ok, result.ok
-          ? "Password reset for local demo account."
+          ? `Password reset completed.${result.source === "api" ? " Synced with backend." : ""}`
           : result.error);
         if (result.ok) {
           const input = card?.querySelector('[name="password"]');
@@ -478,14 +525,21 @@
     accountForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(accountForm);
-      const result = window.storefrontState.createManagedAccount({
-        role: String(formData.get("role") || "Staff"),
-        fullName: String(formData.get("fullName") || "").trim(),
-        username: String(formData.get("username") || "").trim(),
-        password: String(formData.get("password") || "").trim()
-      });
+      const result = window.storefrontState.createManagedAccountWithApi
+        ? await window.storefrontState.createManagedAccountWithApi({
+            role: String(formData.get("role") || "Staff"),
+            fullName: String(formData.get("fullName") || "").trim(),
+            username: String(formData.get("username") || "").trim(),
+            password: String(formData.get("password") || "").trim()
+          })
+        : window.storefrontState.createManagedAccount({
+            role: String(formData.get("role") || "Staff"),
+            fullName: String(formData.get("fullName") || "").trim(),
+            username: String(formData.get("username") || "").trim(),
+            password: String(formData.get("password") || "").trim()
+          });
       setFeedback(result.ok, result.ok
-        ? `${result.account.username} created for local demo.`
+        ? `${result.account.username} created.${result.source === "api" ? " Saved to backend." : " Stored for local demo."}`
         : result.error);
       if (result.ok) {
         accountForm.reset();
@@ -496,14 +550,14 @@
 
   async function render() {
     await loadProducts();
-    const accounts = window.storefrontState.getManagedAccounts();
+    await loadAccounts();
     const voucher = window.storefrontState.getVoucher();
     const report = window.storefrontState.getAdminReport();
-    renderOverview(report, accounts.length);
+    renderOverview(report, accountsCache.length);
     renderVariantProductSelect();
     renderProductList(productsCache);
     renderVoucherEditor(voucher);
-    renderAccountList(accounts);
+    renderAccountList(accountsCache);
     renderReportBody(report);
   }
 

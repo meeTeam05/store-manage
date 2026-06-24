@@ -1,5 +1,6 @@
 #pragma once
 
+#include <exception>
 #include <optional>
 #include <string>
 #include <vector>
@@ -69,15 +70,42 @@ public:
             return Result<Product, StoreManagementError>::fail(StoreManagementError::ProductAlreadyExists);
         }
 
-        Product product(
-            draft.id,
-            draft.name,
-            draft.category,
-            draft.description,
-            draft.collection,
-            draft.status);
-        product_repository_.save(product);
-        return Result<Product, StoreManagementError>::ok(product);
+        try {
+            auto product = Product::rehydrate(
+                draft.id,
+                draft.name,
+                draft.category,
+                draft.description,
+                draft.collection,
+                draft.status,
+                {});
+            product_repository_.save(product);
+            return Result<Product, StoreManagementError>::ok(product);
+        } catch (const std::exception&) {
+            return Result<Product, StoreManagementError>::fail(StoreManagementError::ProductRuleViolation);
+        }
+    }
+
+    Result<Product, StoreManagementError> update_product(const ProductDraft& draft) {
+        auto product = product_repository_.find_by_id(draft.id);
+        if (!product.has_value()) {
+            return Result<Product, StoreManagementError>::fail(StoreManagementError::ProductNotFound);
+        }
+
+        try {
+            auto updated_product = Product::rehydrate(
+                draft.id,
+                draft.name,
+                draft.category,
+                draft.description,
+                draft.collection,
+                draft.status,
+                product->variants());
+            product_repository_.save(updated_product);
+            return Result<Product, StoreManagementError>::ok(updated_product);
+        } catch (const std::exception&) {
+            return Result<Product, StoreManagementError>::fail(StoreManagementError::ProductRuleViolation);
+        }
     }
 
     Result<Product, StoreManagementError> update_product_status(const ProductId& product_id,

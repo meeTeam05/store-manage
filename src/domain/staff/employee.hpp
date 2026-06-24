@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "domain/shared/types.hpp"
 
@@ -40,6 +41,7 @@ public:
 
     virtual std::optional<Employee> find_by_id(const EmployeeId& employee_id) const = 0;
     virtual std::optional<Employee> find_by_account_id(const AccountId& account_id) const = 0;
+    virtual std::vector<Employee> list_all() const = 0;
     virtual void save(const Employee& employee) = 0;
 };
 
