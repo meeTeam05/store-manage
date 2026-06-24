@@ -45,27 +45,7 @@ public:
         return Result<CustomerProfileView, CustomerServiceError>::ok(to_profile_view(*customer));
     }
 
-    Result<Customer, CustomerServiceError> add_to_wishlist(const CustomerId& customer_id,
-                                                           const ProductId& product_id) {
-        auto customer = customer_repository_.find_by_id(customer_id);
-        if (!customer.has_value()) {
-            return Result<Customer, CustomerServiceError>::fail(CustomerServiceError::CustomerNotFound);
-        }
-        customer->add_to_wishlist(product_id);
-        customer_repository_.save(*customer);
-        return Result<Customer, CustomerServiceError>::ok(*customer);
-    }
 
-    Result<Customer, CustomerServiceError> remove_from_wishlist(const CustomerId& customer_id,
-                                                                const ProductId& product_id) {
-        auto customer = customer_repository_.find_by_id(customer_id);
-        if (!customer.has_value()) {
-            return Result<Customer, CustomerServiceError>::fail(CustomerServiceError::CustomerNotFound);
-        }
-        customer->remove_from_wishlist(product_id);
-        customer_repository_.save(*customer);
-        return Result<Customer, CustomerServiceError>::ok(*customer);
-    }
 
 private:
     static CustomerProfileView to_profile_view(const Customer& customer) {

@@ -22,7 +22,6 @@ using fashion_store::domain::catalog::Product;
 using fashion_store::domain::catalog::ProductStatus;
 using fashion_store::domain::catalog::ProductVariant;
 using fashion_store::domain::customer::Customer;
-using fashion_store::domain::customer::Wishlist;
 using fashion_store::domain::identity::Account;
 using fashion_store::domain::identity::AccountStatus;
 using fashion_store::domain::identity::Role;
@@ -523,7 +522,6 @@ std::vector<Customer> load_customers(const std::filesystem::path& path) {
         std::string full_name;
         std::string phone;
         ShippingAddress address;
-        std::vector<ProductId> wishlist;
     };
 
     std::map<std::string, CustomerRecord> records;
@@ -541,14 +539,8 @@ std::vector<Customer> load_customers(const std::filesystem::path& path) {
                 AccountId{account_id},
                 full_name,
                 phone,
-                deserialize_address(input),
-                {}
+                deserialize_address(input)
             });
-        } else if (tag == "W") {
-            std::string customer_id;
-            std::string product_id;
-            input >> std::quoted(customer_id) >> std::quoted(product_id);
-            records[customer_id].wishlist.push_back(ProductId{product_id});
         }
     }
 
@@ -560,9 +552,6 @@ std::vector<Customer> load_customers(const std::filesystem::path& path) {
             record.full_name,
             record.phone,
             record.address);
-        for (const auto& product_id : record.wishlist) {
-            customer.add_to_wishlist(product_id);
-        }
         customers.push_back(customer);
     }
     return customers;
@@ -578,13 +567,6 @@ void save_customers(const std::filesystem::path& path, const std::vector<Custome
                       << std::quoted(customer.phone()) << '\t'
                       << serialize_address(customer.default_shipping_address());
         lines.push_back(customer_line.str());
-
-        for (const auto& product_id : customer.wishlist().items()) {
-            std::ostringstream wishlist_line;
-            wishlist_line << "W " << std::quoted(customer.id().value) << '\t'
-                          << std::quoted(product_id.value);
-            lines.push_back(wishlist_line.str());
-        }
     }
     write_all_lines(path, lines);
 }

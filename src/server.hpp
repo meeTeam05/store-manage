@@ -542,18 +542,13 @@ static std::string ser_address(const ShippingAddress& address) {
 }
 
 static std::string ser_customer(const fashion_store::domain::customer::Customer& customer) {
-    std::vector<std::string> wishlist;
-    for (const auto& product_id : customer.wishlist().items()) {
-        wishlist.push_back(j_str(product_id.value));
-    }
     return j_obj({
         {"customer_id", j_str(customer.id().value)},
         {"account_id",  j_str(customer.account_id().value)},
         {"full_name",   j_str(customer.full_name())},
         {"phone",       j_str(customer.phone())},
         {"city",        j_str(customer.default_shipping_address().city)},
-        {"address",     ser_address(customer.default_shipping_address())},
-        {"wishlist",    j_arr(wishlist)}
+        {"address",     ser_address(customer.default_shipping_address())}
     });
 }
 
@@ -881,43 +876,7 @@ inline void setup_server(
         json_ok(res, ser_customer(*customer));
     });
 
-    svr.Post("/api/customers/:id/wishlist", [&](const httplib::Request& req, httplib::Response& res) {
-        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
-        if (!customer.has_value()) {
-            json_err(res, 404, "Customer not found");
-            return;
-        }
-        auto b = parse_body(req.body);
-        const auto product_id = b.str("product_id");
-        if (product_id.empty()) {
-            json_err(res, 400, "Product id is required");
-            return;
-        }
-        if (!catalog_svc.find_product(ProductId{product_id}).has_value()) {
-            json_err(res, 404, "Product not found");
-            return;
-        }
-        customer->add_to_wishlist(ProductId{product_id});
-        customer_repo.save(*customer);
-        json_ok(res, ser_customer(*customer));
-    });
 
-    svr.Post("/api/customers/:id/wishlist/remove", [&](const httplib::Request& req, httplib::Response& res) {
-        auto customer = customer_repo.find_by_id(CustomerId{req.path_params.at("id")});
-        if (!customer.has_value()) {
-            json_err(res, 404, "Customer not found");
-            return;
-        }
-        auto b = parse_body(req.body);
-        const auto product_id = b.str("product_id");
-        if (product_id.empty()) {
-            json_err(res, 400, "Product id is required");
-            return;
-        }
-        customer->remove_from_wishlist(ProductId{product_id});
-        customer_repo.save(*customer);
-        json_ok(res, ser_customer(*customer));
-    });
 
     svr.Post("/api/cart/add", [&](const httplib::Request& req, httplib::Response& res) {
         auto b = parse_body(req.body);

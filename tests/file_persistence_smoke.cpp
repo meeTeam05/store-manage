@@ -108,11 +108,7 @@ int main() {
     auto profile = customer_service.get_profile_by_account_id(AccountId{"account-001"});
     assert(profile);
 
-    auto wishlist = customer_service.add_to_wishlist(CustomerId{"customer-001"}, ProductId{"product-001"});
-    assert(wishlist);
-    auto reloaded_customer = customer_repository.find_by_id(CustomerId{"customer-001"});
-    assert(reloaded_customer);
-    assert(reloaded_customer->wishlist().contains(ProductId{"product-001"}));
+
 
     auto add_to_cart = cart_service.add_item(CartId{"cart-001"}, CustomerId{"customer-001"}, VariantId{"variant-001"}, 2);
     assert(add_to_cart);

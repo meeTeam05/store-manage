@@ -14,22 +14,6 @@ using fashion_store::domain::shared::ProductId;
 using fashion_store::domain::shared::ShippingAddress;
 using fashion_store::domain::shared::require;
 
-class Wishlist {
-public:
-    void add(const ProductId& product_id);
-
-    bool contains(const ProductId& product_id) const noexcept;
-
-    void remove(const ProductId& product_id);
-
-    const std::vector<ProductId>& items() const noexcept {
-        return product_ids_;
-    }
-
-private:
-    std::vector<ProductId> product_ids_;
-};
-
 class Customer {
 public:
     Customer(CustomerId id,
@@ -43,15 +27,10 @@ public:
     const std::string& full_name() const noexcept { return full_name_; }
     const std::string& phone() const noexcept { return phone_; }
     const ShippingAddress& default_shipping_address() const noexcept { return default_shipping_address_; }
-    const Wishlist& wishlist() const noexcept { return wishlist_; }
 
     void change_phone(std::string phone);
 
     void update_default_shipping_address(ShippingAddress address);
-
-    void add_to_wishlist(const ProductId& product_id);
-
-    void remove_from_wishlist(const ProductId& product_id);
 
 private:
     CustomerId id_;
@@ -59,7 +38,6 @@ private:
     std::string full_name_;
     std::string phone_;
     ShippingAddress default_shipping_address_;
-    Wishlist wishlist_;
 };
 
 class ICustomerRepository {
