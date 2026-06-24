@@ -1,0 +1,106 @@
+.product-shell {
+  padding: 120px 36px 56px;
+}
+
+.product-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 28px;
+}
+
+.product-gallery {
+  display: grid;
+  gap: 18px;
+}
+
+.product-gallery img {
+  aspect-ratio: 0.82;
+  object-fit: cover;
+}
+
+.product-detail {
+  position: sticky;
+  top: 110px;
+  align-self: start;
+}
+
+.product-detail .price {
+  margin: 14px 0 0;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.description {
+  max-width: 480px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.option-group {
+  margin-top: 26px;
+}
+
+.option-group span {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  min-width: 62px;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-solid);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
+}
+
+.chip.is-active {
+  background: var(--border-strong);
+  color: var(--bg);
+  border-color: var(--border-strong);
+}
+
+.chip.is-unavailable {
+  opacity: 0.5;
+  color: var(--text-soft);
+  text-decoration: line-through;
+}
+
+.chip.is-unavailable:hover {
+  opacity: 0.8;
+}
+
+.product-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+@media (max-width: 900px) {
+  .product-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .product-shell {
+    padding: 100px 20px 40px;
+  }
+
+  .product-detail {
+    position: static;
+  }
+}
