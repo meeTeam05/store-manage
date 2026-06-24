@@ -1,0 +1,13 @@
+{
+  "name": "store-manage",
+  "version": "1.0.0",
+  "description": "Domain-driven fashion store management system (C++ backend & JS frontend)",
+  "private": true,
+  "scripts": {
+    "sync": "node scripts/sync-demo-data.js",
+    "dev": "npx http-server web -p 3000"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

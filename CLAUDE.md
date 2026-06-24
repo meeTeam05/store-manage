@@ -27,6 +27,13 @@ ctest --test-dir build
 ./build/fashion_store_api_facade_smoke
 ./build/fashion_store_auth_roles_smoke
 ./build/fashion_store_file_persistence_smoke
+
+# Synchronize mock data from C++ JSON seeds to Frontend storefront-data.js
+npm run sync # or node scripts/sync-demo-data.js
+
+# Start frontend dev server
+npm run dev
+
 ```
 
 Windows fallback (MSYS2 g++):
