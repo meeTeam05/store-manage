@@ -1028,7 +1028,12 @@
   }
 
   function getOrders() {
-    return readJson(storageKeys.orders, []);
+    const rawOrders = readJson(storageKeys.orders, []);
+    const normalizedOrders = normalizeStoredOrders(rawOrders);
+    if (Array.isArray(rawOrders) && rawOrders.length !== normalizedOrders.length) {
+      writeJson(storageKeys.orders, normalizedOrders);
+    }
+    return normalizedOrders;
   }
 
   function getCustomerOrders() {
@@ -1040,13 +1045,14 @@
   }
 
   function persistOrders(orders) {
-    writeJson(storageKeys.orders, orders);
-    return orders;
+    const normalizedOrders = normalizeStoredOrders(orders);
+    writeJson(storageKeys.orders, normalizedOrders);
+    return normalizedOrders;
   }
 
   function persistOrderRecord(order) {
     const orders = getOrders();
-    return persistOrders([order, ...orders.filter((entry) => entry.orderId !== order.orderId)]);
+    return persistOrders([normalizeStoredOrder(order), ...orders.filter((entry) => entry.orderId !== order.orderId)]);
   }
 
   function hydrateCartItems() {
@@ -1084,8 +1090,23 @@
     return ["Cash", "BankTransfer", "EWallet"].includes(paymentMethod) ? paymentMethod : "Cash";
   }
 
+  function buildRuntimeToken(label) {
+    const sequenceKey = `${storageKeys.orders}_${label}_seq`;
+    const nextValue = Number(storage.getItem(sequenceKey) || "0") + 1;
+    storage.setItem(sequenceKey, String(nextValue));
+
+    let randomPart = Math.random().toString(36).slice(2, 8);
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      const buffer = new Uint32Array(1);
+      window.crypto.getRandomValues(buffer);
+      randomPart = buffer[0].toString(36).slice(0, 6);
+    }
+
+    return `${Date.now().toString(36)}-${nextValue.toString(36)}-${randomPart}`;
+  }
+
   function buildTrackingCode() {
-    return `LOCAL-${Date.now().toString(36).toUpperCase()}`;
+    return `LOCAL-${buildRuntimeToken("tracking").replace(/[^a-z0-9]/gi, "").toUpperCase()}`;
   }
 
   function buildBackendTrackingCode(orderId) {
@@ -1120,6 +1141,70 @@
     return "Preparing";
   }
 
+  function normalizeOrderItems(items = []) {
+    return (Array.isArray(items) ? items : []).map((item) => {
+      const unitPriceMinor = normalizeMoney(item?.unitPriceMinor ?? item?.unit_price_minor, 0);
+      const quantity = Math.max(1, normalizeMoney(item?.quantity, 1));
+      return {
+        orderItemId: String(item?.orderItemId || item?.order_item_id || "").trim(),
+        productId: String(item?.productId || item?.product_id || "").trim(),
+        variantId: String(item?.variantId || item?.variant_id || "").trim(),
+        productName: String(item?.productName || item?.product_name || "Unknown Product").trim(),
+        sku: String(item?.sku || "").trim(),
+        size: String(item?.size || "-").trim(),
+        color: String(item?.color || "-").trim(),
+        unitPriceMinor,
+        quantity,
+        lineTotalMinor: normalizeMoney(item?.lineTotalMinor ?? item?.line_total_minor, unitPriceMinor * quantity)
+      };
+    });
+  }
+
+  function normalizeStoredOrder(order, fallback = {}) {
+    const resolvedOrderId = String(order?.orderId || fallback.orderId || "").trim();
+    const orderStatus = normalizeOrderStatus(order?.orderStatus || fallback.orderStatus);
+    const items = normalizeOrderItems(order?.items || fallback.items || []);
+    const backendState = String(order?.backendState || fallback.backendState || "Local demo").trim() || "Local demo";
+    return {
+      orderId: resolvedOrderId,
+      orderNumber: String(order?.orderNumber || fallback.orderNumber || (resolvedOrderId ? buildBackendOrderNumber(resolvedOrderId) : "SM-0000")).trim(),
+      createdAtIso: String(order?.createdAtIso || fallback.createdAtIso || new Date().toISOString()),
+      updatedAtIso: String(order?.updatedAtIso || fallback.updatedAtIso || order?.createdAtIso || fallback.createdAtIso || new Date().toISOString()),
+      customerId: String(order?.customerId || fallback.customerId || "").trim(),
+      customerName: String(order?.customerName || fallback.customerName || "Unknown Customer").trim(),
+      paymentMethod: normalizePaymentMethod(order?.paymentMethod || fallback.paymentMethod),
+      paymentStatus: normalizePaymentStatus(order?.paymentStatus || fallback.paymentStatus),
+      orderStatus,
+      shippingMethod: String(order?.shippingMethod || fallback.shippingMethod || "Standard").trim() || "Standard",
+      shippingStatus: String(order?.shippingStatus || fallback.shippingStatus || shippingStatusFromOrderStatus(orderStatus)).trim() || shippingStatusFromOrderStatus(orderStatus),
+      trackingCode: String(order?.trackingCode || fallback.trackingCode || buildBackendTrackingCode(resolvedOrderId)).trim(),
+      backendState,
+      paymentReference: order?.paymentReference || fallback.paymentReference || null,
+      voucherCode: order?.voucherCode || fallback.voucherCode || null,
+      subtotalMinor: normalizeMoney(order?.subtotalMinor, normalizeMoney(fallback.subtotalMinor, 0)),
+      discountMinor: normalizeMoney(order?.discountMinor, normalizeMoney(fallback.discountMinor, 0)),
+      totalMinor: normalizeMoney(order?.totalMinor, normalizeMoney(fallback.totalMinor, 0)),
+      items,
+      inventoryReserved: Boolean(order?.inventoryReserved ?? fallback.inventoryReserved ?? true),
+      inventoryRestored: Boolean(order?.inventoryRestored ?? fallback.inventoryRestored ?? false),
+      source: String(order?.source || fallback.source || (backendState === "API connected" ? "backend" : "local")) === "backend" ? "backend" : "local"
+    };
+  }
+
+  function normalizeStoredOrders(orders) {
+    const seenOrderIds = new Set();
+    const normalized = [];
+    for (const order of Array.isArray(orders) ? orders : []) {
+      const current = normalizeStoredOrder(order);
+      if (!current.orderId || seenOrderIds.has(current.orderId)) {
+        continue;
+      }
+      seenOrderIds.add(current.orderId);
+      normalized.push(current);
+    }
+    return normalized.sort((left, right) => new Date(right.createdAtIso).getTime() - new Date(left.createdAtIso).getTime());
+  }
+
   function normalizeBackendOrder(responseData, summary = {}, customer = null, session = {}, paymentReference = null) {
     const payload = responseData?.order || responseData;
     if (!payload || !(payload.order_id || payload.orderId)) return null;
@@ -1141,7 +1226,7 @@
         lineTotalMinor: normalizeMoney(item.line_total_minor ?? item.lineTotalMinor, unitPriceMinor * quantity)
       };
     });
-    return {
+    return normalizeStoredOrder({
       orderId,
       orderNumber: payload.order_number || payload.orderNumber || buildBackendOrderNumber(orderId),
       createdAtIso: payload.created_at || payload.createdAtIso || new Date().toISOString(),
@@ -1164,7 +1249,7 @@
       inventoryReserved: true,
       inventoryRestored: false,
       source: "backend"
-    };
+    });
   }
 
   function updateOrderRecord(orderId, updater) {
@@ -1181,9 +1266,9 @@
     }
 
     current.updatedAtIso = new Date().toISOString();
-    orders[index] = current;
+    orders[index] = normalizeStoredOrder(current, orders[index]);
     persistOrders(orders);
-    return { ok: true, order: current, orders };
+    return { ok: true, order: orders[index], orders };
   }
 
   function applyInventoryDelta(items, delta) {
@@ -1207,6 +1292,46 @@
 
     persistProducts(products);
     return { ok: true, products };
+  }
+
+  function canCancelOrder(order) {
+    return ["AwaitingPayment", "Paid"].includes(normalizeOrderStatus(order?.orderStatus));
+  }
+
+  function applyCancellationToOrder(order) {
+    if (!canCancelOrder(order)) {
+      return { ok: false, error: "Only awaiting-payment or paid orders can be cancelled in this demo." };
+    }
+    if (order.inventoryReserved && !order.inventoryRestored) {
+      const inventoryResult = applyInventoryDelta(order.items, 1);
+      if (!inventoryResult.ok) {
+        return inventoryResult;
+      }
+      order.inventoryRestored = true;
+    }
+    order.orderStatus = "Cancelled";
+    order.shippingStatus = "Failed";
+    order.paymentStatus = order.paymentStatus === "Paid" ? "Refunded" : "Failed";
+    return { ok: true };
+  }
+
+  function cancelCustomerOrder(orderId) {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Sign in with a customer account to cancel this order." };
+    }
+
+    const existingOrder = getOrders().find((order) => order.orderId === orderId);
+    if (!existingOrder || existingOrder.customerId !== session.customerId) {
+      return { ok: false, error: "You can only cancel your own orders." };
+    }
+
+    return updateOrderRecord(orderId, (order) => {
+      if (order.customerId !== session.customerId) {
+        return { ok: false, error: "You can only cancel your own orders." };
+      }
+      return applyCancellationToOrder(order);
+    });
   }
 
   function applyStaffOrderAction(orderId, action) {
@@ -1249,20 +1374,7 @@
           order.shippingStatus = "Delivered";
           return { ok: true };
         case "cancel":
-          if (!["AwaitingPayment", "Paid"].includes(order.orderStatus)) {
-            return { ok: false, error: "Only awaiting-payment or paid orders can be cancelled in this demo." };
-          }
-          if (order.inventoryReserved && !order.inventoryRestored) {
-            const inventoryResult = applyInventoryDelta(order.items, 1);
-            if (!inventoryResult.ok) {
-              return inventoryResult;
-            }
-            order.inventoryRestored = true;
-          }
-          order.orderStatus = "Cancelled";
-          order.shippingStatus = "Failed";
-          order.paymentStatus = order.paymentStatus === "Paid" ? "Refunded" : "Failed";
-          return { ok: true };
+          return applyCancellationToOrder(order);
         default:
           return { ok: false, error: "Unknown staff action." };
       }
@@ -1292,6 +1404,34 @@
       };
     }
     const orders = mergeBackendOrders(response.data.map((order) => normalizeBackendOrder(order)).filter(Boolean));
+    return { ok: true, orders, source: "api" };
+  }
+
+  async function loadCustomerOrdersWithApi() {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Customer session required", orders: [], source: "local" };
+    }
+    if (!window.storefrontApi) {
+      return { ok: false, error: "API unavailable", orders: getCustomerOrders(), source: "local" };
+    }
+
+    const response = await window.storefrontApi.getCustomerOrders(session.customerId);
+    if (!response.ok || !Array.isArray(response.data)) {
+      return {
+        ok: false,
+        error: response.error || "Customer orders unavailable",
+        orders: getCustomerOrders(),
+        source: response.error === "API unavailable" ? "local" : "error"
+      };
+    }
+
+    const customer = getCustomerProfile();
+    const orders = mergeBackendOrders(
+      response.data
+        .map((order) => normalizeBackendOrder(order, {}, customer, session))
+        .filter(Boolean)
+    ).filter((order) => order.customerId === session.customerId);
     return { ok: true, orders, source: "api" };
   }
 
@@ -1333,15 +1473,54 @@
     return { ok: true, order, orders: getOrders(), source: "api" };
   }
 
+  async function cancelCustomerOrderWithApi(orderId) {
+    const session = getSession();
+    if (!session || !session.customerId) {
+      return { ok: false, error: "Sign in with a customer account to cancel this order." };
+    }
+
+    const existingOrder = getOrders().find((order) => order.orderId === orderId) || null;
+    if (!existingOrder || existingOrder.customerId !== session.customerId) {
+      return { ok: false, error: "You can only cancel your own orders." };
+    }
+
+    const isBackendOrder = existingOrder.source === "backend" || existingOrder.backendState === "API connected";
+    if (!window.storefrontApi || !isBackendOrder) {
+      return cancelCustomerOrder(orderId);
+    }
+
+    const response = await window.storefrontApi.cancelCustomerOrder(session.customerId, orderId);
+    if (!response.ok) {
+      return response.error === "API unavailable"
+        ? cancelCustomerOrder(orderId)
+        : { ok: false, error: `Backend cancel failed: ${response.error}` };
+    }
+
+    const order = normalizeBackendOrder(
+      response.data,
+      existingOrder,
+      getCustomerProfile(),
+      session,
+      existingOrder.paymentReference || null
+    );
+    if (!order) {
+      return { ok: false, error: "Backend cancel did not return an order." };
+    }
+
+    persistOrderRecord(order);
+    return { ok: true, order, orders: getCustomerOrders(), source: "api" };
+  }
+
   function createLocalOrderRecord(paymentMethod, summary, customer, session, backendState, paymentReference = null) {
     const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
     const isInstantPaid = normalizedPaymentMethod === "EWallet";
     const existingOrders = getOrders();
     const createdAtIso = new Date().toISOString();
-    return {
-      orderId: `local-order-${Date.now()}`,
+    return normalizeStoredOrder({
+      orderId: `local-order-${session.customerId || "guest"}-${buildRuntimeToken("order")}`,
       orderNumber: buildOrderNumber(existingOrders),
       createdAtIso,
+      updatedAtIso: createdAtIso,
       customerId: session.customerId,
       customerName: customer ? customer.fullName : (session.displayName || session.customerName || session.username),
       paymentMethod: normalizedPaymentMethod,
@@ -1358,8 +1537,9 @@
       totalMinor: summary.totalMinor,
       items: summary.items,
       inventoryReserved: true,
-      inventoryRestored: false
-    };
+      inventoryRestored: false,
+      source: "local"
+    });
   }
 
   async function placeOrder(paymentMethod) {
@@ -1484,8 +1664,12 @@
     clearCart,
     getOrders,
     getCustomerOrders,
+    canCancelOrder,
     buildCartSummary,
     placeOrder,
+    cancelCustomerOrder,
+    loadCustomerOrdersWithApi,
+    cancelCustomerOrderWithApi,
     applyStaffOrderAction,
     loadStaffOrdersWithApi,
     applyStaffOrderActionWithApi,

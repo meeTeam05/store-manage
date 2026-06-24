@@ -150,6 +150,9 @@
     async getCustomerOrders(customerId) {
       return request(`/api/customers/${customerId}/orders`);
     },
+    async cancelCustomerOrder(customerId, orderId) {
+      return request(`/api/customers/${customerId}/orders/${orderId}/cancel`, { method: "POST" });
+    },
     async payOrder(orderId) {
       return request(`/api/orders/${orderId}/pay`, { method: "POST" });
     },

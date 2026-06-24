@@ -334,6 +334,56 @@ void verify_cancel_paid_order_marks_payment_refunded() {
     assert(inventory_after->reserved() == 0);
 }
 
+void verify_customer_cancel_requires_order_ownership() {
+    InMemoryProductRepository product_repository;
+    InMemoryInventoryRepository inventory_repository;
+    InMemoryCartRepository cart_repository;
+    InMemoryOrderRepository order_repository;
+    InMemoryVoucherRepository voucher_repository;
+
+    const auto owner_id = CustomerId{"customer-013"};
+    const auto stranger_id = CustomerId{"customer-014"};
+    const auto order_id = OrderId{"order-013"};
+    const auto variant_id = VariantId{"variant-013"};
+
+    Order order(
+        order_id,
+        owner_id,
+        {
+            OrderItem{OrderItemId{"item-013"}, ProductId{"product-013"}, variant_id, "Item 013", "SKU-013", Size{"M"}, Color{"Black"}, Money::from_minor(3000), 1, Money::from_minor(0)}
+        },
+        ShippingAddress{"Client", "0900000000", "1 Le Loi", "", "Ben Nghe", "District 1", "Ho Chi Minh City", "Vietnam"},
+        PaymentMethod::BankTransfer);
+    assert(order.submit_for_payment());
+    order_repository.save(order);
+    inventory_repository.save(InventoryItem(variant_id, 6, 1));
+
+    OrderApplicationService order_service(
+        cart_repository,
+        order_repository,
+        product_repository,
+        inventory_repository,
+        voucher_repository);
+
+    auto foreign_cancel = order_service.cancel_customer_order(stranger_id, order_id);
+    assert(!foreign_cancel);
+    assert(foreign_cancel.error() == PlaceOrderError::OrderRuleViolation);
+
+    auto stored_before_owner_cancel = order_repository.find_by_id(order_id);
+    assert(stored_before_owner_cancel.has_value());
+    assert(stored_before_owner_cancel->status() == OrderStatus::AwaitingPayment);
+
+    auto owner_cancel = order_service.cancel_customer_order(owner_id, order_id);
+    assert(owner_cancel);
+    assert(owner_cancel.value().status() == OrderStatus::Cancelled);
+    assert(owner_cancel.value().payment_status() == PaymentStatus::Failed);
+
+    auto inventory_after = inventory_repository.find_by_variant_id(variant_id);
+    assert(inventory_after.has_value());
+    assert(inventory_after->on_hand() == 6);
+    assert(inventory_after->reserved() == 0);
+}
+
 }  // namespace
 
 int main() {
@@ -343,5 +393,6 @@ int main() {
     verify_voucher_usage_is_consumed_and_restored();
     verify_cancel_after_shipping_is_rejected_without_side_effects();
     verify_cancel_paid_order_marks_payment_refunded();
+    verify_customer_cancel_requires_order_ownership();
     return 0;
 }

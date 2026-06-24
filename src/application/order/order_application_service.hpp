@@ -212,21 +212,18 @@ public:
         if (!order) {
             return Result<Order, PlaceOrderError>::fail(order.error());
         }
-        auto cancellation_plan = stage_cancellation(order.value());
-        if (!cancellation_plan) {
-            return Result<Order, PlaceOrderError>::fail(cancellation_plan.error());
-        }
+        return cancel_loaded_order(order.value());
+    }
 
-        auto cancelled_order = order.value();
-        auto cancel_result = cancelled_order.cancel();
-        if (!cancel_result) {
+    Result<Order, PlaceOrderError> cancel_customer_order(const CustomerId& customer_id, const OrderId& order_id) {
+        auto order = load_order(order_id);
+        if (!order) {
+            return Result<Order, PlaceOrderError>::fail(order.error());
+        }
+        if (order.value().customer_id() != customer_id) {
             return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
         }
-
-        persist_inventory_items(cancellation_plan.value().staged_inventory_items);
-        persist_voucher(cancellation_plan.value().restored_voucher);
-        order_repository_.save(cancelled_order);
-        return Result<Order, PlaceOrderError>::ok(cancelled_order);
+        return cancel_loaded_order(order.value());
     }
 
     Result<Order, PlaceOrderError> get_order(const OrderId& order_id) const {
@@ -242,6 +239,23 @@ public:
     }
 
 private:
+    Result<Order, PlaceOrderError> cancel_loaded_order(const Order& order) {
+        auto cancellation_plan = stage_cancellation(order);
+        if (!cancellation_plan) {
+            return Result<Order, PlaceOrderError>::fail(cancellation_plan.error());
+        }
+
+        auto cancelled_order = order;
+        auto cancel_result = cancelled_order.cancel();
+        if (!cancel_result) {
+            return Result<Order, PlaceOrderError>::fail(PlaceOrderError::OrderRuleViolation);
+        }
+
+        persist_inventory_items(cancellation_plan.value().staged_inventory_items);
+        persist_voucher(cancellation_plan.value().restored_voucher);
+        order_repository_.save(cancelled_order);
+        return Result<Order, PlaceOrderError>::ok(cancelled_order);
+    }
     Result<Cart, PlaceOrderError> load_cart_for_checkout(const CartId& cart_id) const {
         auto cart = cart_repository_.find_by_id(cart_id);
         if (!cart.has_value()) {

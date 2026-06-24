@@ -1016,6 +1016,14 @@ inline void setup_server(
         json_ok(res, j_arr(arr));
     });
 
+    svr.Post("/api/customers/:customer_id/orders/:id/cancel", [&](const httplib::Request& req, httplib::Response& res) {
+        auto result = order_svc.cancel_customer_order(
+            CustomerId{req.path_params.at("customer_id")},
+            OrderId{req.path_params.at("id")});
+        if (!result) { json_err(res, 400, "Cancel failed"); return; }
+        json_ok(res, ser_order(result.value()));
+    });
+
     svr.Post("/api/orders/:id/pay", [&](const httplib::Request& req, httplib::Response& res) {
         auto result = order_svc.mark_order_paid(OrderId{req.path_params.at("id")});
         if (!result) { json_err(res, 400, "Mark paid failed"); return; }
